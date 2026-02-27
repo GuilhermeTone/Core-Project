@@ -23,7 +23,7 @@ class ProdutoServiceTest extends TestCase
 
         $produto = $produtoService->adicionaProduto("Notebook", 1000, "eletronico");
 
-        $this->assertEquals("1", $produto->nome);
+        $this->assertEquals("Notebook", $produto->nome);
         $this->assertEquals(1000, $produto->valor);
         $this->assertEquals("eletronico", $produto->tipo);
     }

@@ -20,7 +20,7 @@ jobs:
           php-version: 8.4
 
       - name: Copiar .env
-        run: cp .env.example .env
+        run: cp .env.test .env
 
       - name: Criar banco de dados
         run: touch database/database.sqlite

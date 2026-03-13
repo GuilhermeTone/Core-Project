@@ -8,7 +8,12 @@
     "require": {
         "php": "^8.2",
         "laravel/framework": "^12.0",
-        "laravel/tinker": "^2.10.1"
+        "laravel/horizon": "^5.45",
+        "laravel/tinker": "^2.10.1",
+        "nelmio/alice": "^3.17",
+        "predis/predis": "^3.4",
+        "symfony/css-selector": "^7.0",
+        "symfony/dom-crawler": "^7.4"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

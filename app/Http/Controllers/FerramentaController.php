@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Jobs\BuscarFerramentaJob;
 use App\Models\FerramentaBusca;
+use App\Models\ResultadoBusca;
 use App\Services\CrawlerService;
 use Illuminate\Http\Request;
 
@@ -18,7 +19,7 @@ class FerramentaController extends Controller
             ->limit(20)
             ->get();
 
-        $buscasJson = $buscasRecentes->map(fn ($b) => [
+        $buscasJson = $buscasRecentes->map(fn (FerramentaBusca $b) => [
             'id'               => $b->id,
             'termo'            => $b->termo,
             'status'           => $b->status,
@@ -26,13 +27,13 @@ class FerramentaController extends Controller
             'total_sites'      => $b->total_sites,
             'sites_concluidos' => $b->resultados->pluck('site')->unique()->count(),
             'criado_em'        => $b->created_at->diffForHumans(),
-            'resultados'       => $b->resultados->map(fn ($r) => [
+            'resultados'       => $b->resultados->map(fn (ResultadoBusca $r) => [
                 'id'              => $r->id,
                 'site'            => $r->site,
                 'nome_site'       => $r->nome_site,
                 'nome'            => $r->nome,
                 'preco'           => $r->preco,
-                'preco_formatado' => $r->preco ? 'R$ ' . number_format($r->preco, 2, ',', '.') : 'Sem preço',
+                'preco_formatado' => $r->preco ? 'R$ ' . number_format((float) $r->preco, 2, ',', '.') : 'Sem preço',
                 'url'             => $r->url,
                 'imagem'          => $r->imagem,
                 'mais_barato'     => (bool) $r->mais_barato,
@@ -94,14 +95,14 @@ class FerramentaController extends Controller
             'total_sites'      => $busca->total_sites,
             'sites_concluidos' => count($sitesEncontrados),
             'total'            => $busca->resultados->count(),
-            'resultados'       => $busca->resultados->map(fn ($r) => [
+            'resultados'       => $busca->resultados->map(fn (ResultadoBusca $r) => [
                 'id'              => $r->id,
                 'site'            => $r->site,
                 'nome_site'       => $r->nome_site,
                 'nome'            => $r->nome,
                 'descricao'       => $r->descricao,
                 'preco'           => $r->preco,
-                'preco_formatado' => $r->preco ? 'R$ ' . number_format($r->preco, 2, ',', '.') : 'Sem preço',
+                'preco_formatado' => $r->preco ? 'R$ ' . number_format((float) $r->preco, 2, ',', '.') : 'Sem preço',
                 'url'             => $r->url,
                 'imagem'          => $r->imagem,
                 'mais_barato'     => (bool) $r->mais_barato,

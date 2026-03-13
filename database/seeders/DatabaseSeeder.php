@@ -5,6 +5,8 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
+use Faker\Factory as Faker;
 
 class DatabaseSeeder extends Seeder
 {
@@ -15,11 +17,25 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        $faker = Faker::create();
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        $path = storage_path('app/users.csv');
+
+        $file = fopen($path, 'w');
+
+        for ($i = 0; $i < 1000000; $i++) {
+
+            fputcsv($file, [
+                $faker->name(),
+                Str::uuid() . '@mail.com',
+                now(),
+                bcrypt('password'),
+                Str::random(10),
+                now(),
+                now(),
+            ]);
+        }
+
+        fclose($file);
     }
 }

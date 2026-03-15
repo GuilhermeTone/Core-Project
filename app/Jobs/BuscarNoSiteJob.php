@@ -62,7 +62,13 @@ class BuscarNoSiteJob implements ShouldQueue
     }
 
     /**
-     * Verifica se o nome do produto tem ao menos uma palavra significativa do termo buscado.
+     * Palavras que indicam kit/conjunto. Se aparecerem no produto mas não na busca, o item é descartado.
+     */
+    private const PALAVRAS_KIT = ['jogo', 'kit', 'conjunto', 'berco', 'maleta', 'suporte', 'porta'];
+
+    /**
+     * Verifica se o nome do produto contém TODAS as palavras significativas do termo buscado
+     * e não é um kit/conjunto quando o usuário não buscou por um.
      * "Significativa" = 3+ caracteres (ignora preposições como "de", "da", "em", "com").
      */
     private function eRelevante(string $nomeItem, string $termoBusca): bool
@@ -81,13 +87,23 @@ class BuscarNoSiteJob implements ShouldQueue
             return true; // termo muito curto — aceita tudo
         }
 
+        // Todas as palavras significativas do termo devem estar no nome do produto
         foreach ($palavrasSignificativas as $palavra) {
-            if (mb_strpos($normItem, $palavra) !== false) {
-                return true;
+            if (mb_strpos($normItem, $palavra) === false) {
+                return false;
             }
         }
 
-        return false;
+        // Se o produto contém palavra de kit/conjunto mas a busca não, descarta
+        foreach (self::PALAVRAS_KIT as $palavraKit) {
+            $itemTemKit  = mb_strpos($normItem, $palavraKit) !== false;
+            $buscarKit   = mb_strpos($normTermo, $palavraKit) !== false;
+            if ($itemTemKit && !$buscarKit) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

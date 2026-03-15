@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Jobs\BuscarFerramentaJob;
 use App\Models\FerramentaBusca;
+use App\Models\ResultadoBusca;
 use App\Services\CrawlerService;
 use Illuminate\Http\Request;
 
@@ -14,11 +15,12 @@ class FerramentaController extends Controller
         $listaLojas = $crawler->getListaLojas();
 
         $buscasRecentes = FerramentaBusca::with(['resultados' => fn ($q) => $q->orderByRaw('mais_barato DESC')->orderBy('preco')])
+            ->where('user_id', auth()->id())
             ->latest()
             ->limit(20)
             ->get();
 
-        $buscasJson = $buscasRecentes->map(fn ($b) => [
+        $buscasJson = $buscasRecentes->map(fn (FerramentaBusca $b) => [
             'id'               => $b->id,
             'termo'            => $b->termo,
             'status'           => $b->status,
@@ -26,13 +28,13 @@ class FerramentaController extends Controller
             'total_sites'      => $b->total_sites,
             'sites_concluidos' => $b->resultados->pluck('site')->unique()->count(),
             'criado_em'        => $b->created_at->diffForHumans(),
-            'resultados'       => $b->resultados->map(fn ($r) => [
+            'resultados'       => $b->resultados->map(fn (ResultadoBusca $r) => [
                 'id'              => $r->id,
                 'site'            => $r->site,
                 'nome_site'       => $r->nome_site,
                 'nome'            => $r->nome,
                 'preco'           => $r->preco,
-                'preco_formatado' => $r->preco ? 'R$ ' . number_format($r->preco, 2, ',', '.') : 'Sem preço',
+                'preco_formatado' => $r->preco ? 'R$ ' . number_format((float) $r->preco, 2, ',', '.') : 'Sem preço',
                 'url'             => $r->url,
                 'imagem'          => $r->imagem,
                 'mais_barato'     => (bool) $r->mais_barato,
@@ -45,25 +47,25 @@ class FerramentaController extends Controller
     public function buscar(Request $request, CrawlerService $crawler)
     {
         $request->validate([
-            'termo' => 'required|string|min:2|max:100',
-            'lojas' => 'nullable|array',
+            'termo'   => 'required|string|min:2|max:100',
+            'lojas'   => 'nullable|array',
             'lojas.*' => 'string',
         ]);
 
         $lojas = $request->lojas ?? null;
 
-        // Valida que os identificadores informados existem
         if (!empty($lojas)) {
             $validos = $crawler->getIdentificadores();
             $lojas   = array_values(array_intersect($lojas, $validos));
             if (empty($lojas)) {
-                $lojas = null; // se nenhum válido, usa todos
+                $lojas = null;
             }
         }
 
         $busca = FerramentaBusca::create([
-            'termo' => $request->termo,
-            'lojas' => $lojas,
+            'user_id' => auth()->id(),
+            'termo'   => $request->termo,
+            'lojas'   => $lojas,
         ]);
 
         BuscarFerramentaJob::dispatch($busca->id);
@@ -79,13 +81,11 @@ class FerramentaController extends Controller
     {
         $busca = FerramentaBusca::with(['resultados' => function ($q) {
             $q->orderByRaw('mais_barato DESC')->orderBy('preco');
-        }])->findOrFail($id);
+        }])
+            ->where('user_id', auth()->id())
+            ->findOrFail($id);
 
-        $sitesEncontrados = $busca->resultados
-            ->pluck('site')
-            ->unique()
-            ->values()
-            ->toArray();
+        $sitesEncontrados = $busca->resultados->pluck('site')->unique()->values()->toArray();
 
         return response()->json([
             'status'           => $busca->status,
@@ -94,14 +94,14 @@ class FerramentaController extends Controller
             'total_sites'      => $busca->total_sites,
             'sites_concluidos' => count($sitesEncontrados),
             'total'            => $busca->resultados->count(),
-            'resultados'       => $busca->resultados->map(fn ($r) => [
+            'resultados'       => $busca->resultados->map(fn (ResultadoBusca $r) => [
                 'id'              => $r->id,
                 'site'            => $r->site,
                 'nome_site'       => $r->nome_site,
                 'nome'            => $r->nome,
                 'descricao'       => $r->descricao,
                 'preco'           => $r->preco,
-                'preco_formatado' => $r->preco ? 'R$ ' . number_format($r->preco, 2, ',', '.') : 'Sem preço',
+                'preco_formatado' => $r->preco ? 'R$ ' . number_format((float) $r->preco, 2, ',', '.') : 'Sem preço',
                 'url'             => $r->url,
                 'imagem'          => $r->imagem,
                 'mais_barato'     => (bool) $r->mais_barato,
@@ -111,7 +111,7 @@ class FerramentaController extends Controller
 
     public function destroy(int $id)
     {
-        FerramentaBusca::findOrFail($id)->delete();
+        FerramentaBusca::where('user_id', auth()->id())->findOrFail($id)->delete();
         return response()->json(['ok' => true]);
     }
 }

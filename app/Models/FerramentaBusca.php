@@ -10,6 +10,7 @@ class FerramentaBusca extends Model
     protected $table = 'ferramentas_buscas';
 
     protected $fillable = [
+        'user_id',
         'termo',
         'lojas',
         'status',
@@ -21,8 +22,10 @@ class FerramentaBusca extends Model
         'lojas' => 'array',
     ];
 
+    /** @phpstan-return HasMany<ResultadoBusca, FerramentaBusca> */
     public function resultados(): HasMany
     {
+        /** @phpstan-ignore return.type */
         return $this->hasMany(ResultadoBusca::class, 'ferramenta_busca_id');
     }
 

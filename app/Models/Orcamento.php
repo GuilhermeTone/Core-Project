@@ -19,6 +19,7 @@ class Orcamento extends Model
         'margem_padrao' => 'decimal:2',
     ];
 
+    /** @phpstan-return HasMany<OrcamentoItem, covariant Orcamento> */
     public function itens(): HasMany
     {
         return $this->hasMany(OrcamentoItem::class);
@@ -26,11 +27,11 @@ class Orcamento extends Model
 
     public function totalCusto(): float
     {
-        return (float) $this->itens->sum(fn ($i) => $i->preco_custo * $i->quantidade);
+        return (float) $this->itens->sum(fn (OrcamentoItem $i) => $i->preco_custo * $i->quantidade);
     }
 
     public function totalVenda(): float
     {
-        return (float) $this->itens->sum(fn ($i) => $i->precoVenda() * $i->quantidade);
+        return (float) $this->itens->sum(fn (OrcamentoItem $i) => $i->precoVenda() * $i->quantidade);
     }
 }

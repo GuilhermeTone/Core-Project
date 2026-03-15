@@ -38,6 +38,7 @@ class AssinaturaController extends Controller
             ->newSubscription('default', $priceId)
             ->checkout($options);
 
+        // @phpstan-ignore-next-line
         return redirect($checkout->url);
     }
 

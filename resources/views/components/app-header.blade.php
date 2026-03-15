@@ -6,6 +6,16 @@
         <div class="flex items-center gap-3 shrink-0">
             {{ $actions ?? '' }}
             <div class="flex items-center gap-2 border-l border-gray-200 pl-3">
+                <a href="{{ route('ferramentas.index') }}"
+                   title="{{ auth()->user()->subscribed('default') ? 'Assinatura ativa' : 'Sem assinatura ativa' }}"
+                   class="hidden sm:flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-colors
+                          {{ auth()->user()->subscribed('default')
+                              ? 'text-green-700 border-green-200 bg-green-50 hover:bg-green-100'
+                              : 'text-red-700 border-red-200 bg-red-50 hover:bg-red-100' }}">
+                    <span class="w-1.5 h-1.5 rounded-full shrink-0
+                                 {{ auth()->user()->subscribed('default') ? 'bg-green-500' : 'bg-red-400' }}"></span>
+                    Ferramentas
+                </a>
                 <a href="{{ route('assinatura.index') }}"
                    title="{{ auth()->user()->subscribed('default') ? 'Assinatura ativa' : 'Sem assinatura ativa' }}"
                    class="hidden sm:flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-colors

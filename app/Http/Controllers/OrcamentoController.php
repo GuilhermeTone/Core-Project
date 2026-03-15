@@ -77,6 +77,7 @@ class OrcamentoController extends Controller
             'imagem'             => 'nullable|string',
         ]);
 
+        /** @var OrcamentoItem $item */
         $item = $orcamento->itens()->create($data);
         $item->load('orcamento');
 

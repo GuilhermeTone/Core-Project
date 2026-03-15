@@ -15,6 +15,7 @@ class FerramentaController extends Controller
         $listaLojas = $crawler->getListaLojas();
 
         $buscasRecentes = FerramentaBusca::with(['resultados' => fn ($q) => $q->orderByRaw('mais_barato DESC')->orderBy('preco')])
+            ->where('user_id', auth()->id())
             ->latest()
             ->limit(20)
             ->get();
@@ -46,25 +47,25 @@ class FerramentaController extends Controller
     public function buscar(Request $request, CrawlerService $crawler)
     {
         $request->validate([
-            'termo' => 'required|string|min:2|max:100',
-            'lojas' => 'nullable|array',
+            'termo'   => 'required|string|min:2|max:100',
+            'lojas'   => 'nullable|array',
             'lojas.*' => 'string',
         ]);
 
         $lojas = $request->lojas ?? null;
 
-        // Valida que os identificadores informados existem
         if (!empty($lojas)) {
             $validos = $crawler->getIdentificadores();
             $lojas   = array_values(array_intersect($lojas, $validos));
             if (empty($lojas)) {
-                $lojas = null; // se nenhum válido, usa todos
+                $lojas = null;
             }
         }
 
         $busca = FerramentaBusca::create([
-            'termo' => $request->termo,
-            'lojas' => $lojas,
+            'user_id' => auth()->id(),
+            'termo'   => $request->termo,
+            'lojas'   => $lojas,
         ]);
 
         BuscarFerramentaJob::dispatch($busca->id);
@@ -80,13 +81,11 @@ class FerramentaController extends Controller
     {
         $busca = FerramentaBusca::with(['resultados' => function ($q) {
             $q->orderByRaw('mais_barato DESC')->orderBy('preco');
-        }])->findOrFail($id);
+        }])
+            ->where('user_id', auth()->id())
+            ->findOrFail($id);
 
-        $sitesEncontrados = $busca->resultados
-            ->pluck('site')
-            ->unique()
-            ->values()
-            ->toArray();
+        $sitesEncontrados = $busca->resultados->pluck('site')->unique()->values()->toArray();
 
         return response()->json([
             'status'           => $busca->status,
@@ -112,7 +111,7 @@ class FerramentaController extends Controller
 
     public function destroy(int $id)
     {
-        FerramentaBusca::findOrFail($id)->delete();
+        FerramentaBusca::where('user_id', auth()->id())->findOrFail($id)->delete();
         return response()->json(['ok' => true]);
     }
 }

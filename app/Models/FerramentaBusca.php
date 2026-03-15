@@ -10,6 +10,7 @@ class FerramentaBusca extends Model
     protected $table = 'ferramentas_buscas';
 
     protected $fillable = [
+        'user_id',
         'termo',
         'lojas',
         'status',

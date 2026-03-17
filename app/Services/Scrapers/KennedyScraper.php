@@ -17,7 +17,7 @@ class KennedyScraper extends BaseScraper
         return 'Ferramentas Kennedy';
     }
 
-    public function buscar(string $termo): array
+    protected function executarBusca(string $termo): array
     {
         $query = urlencode($termo);
         $url   = self::BASE_URL . "/busca?q={$query}";

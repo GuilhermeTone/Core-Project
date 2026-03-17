@@ -20,7 +20,7 @@ class LojaMecanicoScraper extends BaseScraper
         return 'Loja do Mecânico';
     }
 
-    public function buscar(string $termo): array
+    protected function executarBusca(string $termo): array
     {
         $url = sprintf(
             'https://%s-dsn.algolia.net/1/indexes/%s/query',

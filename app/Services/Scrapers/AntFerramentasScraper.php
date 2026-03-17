@@ -14,7 +14,7 @@ class AntFerramentasScraper extends BaseScraper
         return 'ANT Ferramentas';
     }
 
-    public function buscar(string $termo): array
+    protected function executarBusca(string $termo): array
     {
         return $this->buscarViaVtexApi('www.antferramentas.com.br', $termo);
     }

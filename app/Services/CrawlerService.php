@@ -10,7 +10,6 @@ use App\Services\Scrapers\LFMaquinasScraper;
 use App\Services\Scrapers\LojaMecanicoScraper;
 use App\Services\Scrapers\MaboreScraper;
 use App\Services\Scrapers\MartineliScraper;
-use App\Services\Scrapers\MercadoLivreScraper;
 use App\Services\Scrapers\ScraperInterface;
 use Illuminate\Support\Facades\Log;
 
@@ -22,7 +21,6 @@ class CrawlerService
     public function __construct()
     {
         $this->scrapers = [
-            'mercadolivre'   => new MercadoLivreScraper(),
             'lojadomecanico' => new LojaMecanicoScraper(),
             'anhanguera'     => new AnhangueraScraper(),
             'antferramentas' => new AntFerramentasScraper(),

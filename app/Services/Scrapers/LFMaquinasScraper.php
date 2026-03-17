@@ -14,7 +14,7 @@ class LFMaquinasScraper extends BaseScraper
         return 'LF Máquinas e Ferramentas';
     }
 
-    public function buscar(string $termo): array
+    protected function executarBusca(string $termo): array
     {
         $query = rawurlencode($termo);
 

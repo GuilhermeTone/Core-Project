@@ -14,7 +14,7 @@ class FerMaquinasScraper extends BaseScraper
         return 'Fermáquinas';
     }
 
-    public function buscar(string $termo): array
+    protected function executarBusca(string $termo): array
     {
         $query = rawurlencode($termo);
 

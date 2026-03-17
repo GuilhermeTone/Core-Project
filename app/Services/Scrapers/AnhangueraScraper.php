@@ -18,7 +18,7 @@ class AnhangueraScraper extends BaseScraper
         return 'Anhanguera Ferramentas';
     }
 
-    public function buscar(string $termo): array
+    protected function executarBusca(string $termo): array
     {
         $query = urlencode($termo);
         $url   = self::BASE_URL . "/?Busca={$query}";

@@ -28,6 +28,28 @@ abstract class BaseScraper implements ScraperInterface
     }
 
     /**
+     * Template method: cleans the term, delegates to executarBusca(), then
+     * filters and ranks the raw results by relevance before returning.
+     *
+     * {@inheritdoc}
+     */
+    final public function buscar(string $termo): array
+    {
+        $termoLimpo = QueryNormalizer::limpar($termo);
+        $resultados = $this->executarBusca($termoLimpo);
+
+        return RelevanceFilter::filtrar($resultados, $termoLimpo);
+    }
+
+    /**
+     * Performs the actual site-specific search and returns raw results.
+     * Subclasses implement this instead of buscar().
+     *
+     * @return array<array{nome: string, descricao: string|null, preco: float|null, url: string, imagem: string|null}>
+     */
+    abstract protected function executarBusca(string $termo): array;
+
+    /**
      * Performs a GET request and returns the response body.
      * Returns an empty string on failure.
      */

@@ -51,6 +51,16 @@ class MercadoLivreScraper extends BaseScraper
                 continue;
             }
 
+            // Tenta extrair o SKU/código do vendedor nos atributos do produto
+            $codigo = null;
+            foreach ($item['attributes'] ?? [] as $attr) {
+                if (in_array($attr['id'], ['SELLER_SKU', 'MODEL', 'ITEM_CODE'], true) && !empty($attr['value_name'])) {
+                    $codigo = $attr['value_name'];
+                    break;
+                }
+            }
+            $codigo = $codigo ?? ($item['catalog_product_id'] ?? null);
+
             $resultados[] = [
                 'nome'      => $nome,
                 'descricao' => null,
@@ -59,6 +69,7 @@ class MercadoLivreScraper extends BaseScraper
                 'imagem'    => isset($item['thumbnail'])
                     ? str_replace('I.jpg', 'O.jpg', $item['thumbnail'])
                     : null,
+                'codigo'    => $codigo,
             ];
         }
 

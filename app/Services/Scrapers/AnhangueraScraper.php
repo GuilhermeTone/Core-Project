@@ -21,7 +21,7 @@ class AnhangueraScraper extends BaseScraper
     protected function executarBusca(string $termo): array
     {
         $query = urlencode($termo);
-        $url   = self::BASE_URL . "/?Busca={$query}";
+        $url   = self::BASE_URL . "/busca?busca={$query}";
 
         $html = $this->get($url);
         if (empty($html)) {
@@ -81,6 +81,7 @@ class AnhangueraScraper extends BaseScraper
                     'preco'     => $preco,
                     'url'       => $href,
                     'imagem'    => $imagem,
+                    'codigo'    => null,
                 ];
             });
         } catch (\Exception $e) {

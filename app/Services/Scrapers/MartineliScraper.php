@@ -75,19 +75,10 @@ class MartineliScraper extends BaseScraper
                         return;
                     }
 
-                    $preco = null;
-                    foreach (['.price-new', '.product-price-new', '.special-price', '.price'] as $sel) {
-                        try {
-                            $txt   = $node->filter($sel)->first()->text();
-                            $clean = preg_replace('/[^\d,]/', '', $txt);
-                            $clean = str_replace(',', '.', $clean);
-                            if (is_numeric($clean) && (float) $clean > 0) {
-                                $preco = (float) $clean;
-                                break;
-                            }
-                        } catch (\Exception $e) {
-                        }
-                    }
+                    // Martineli shows Pix/boleto discount in .price-new and the
+                    // regular card price in .price-old. Quotations use card/regular price.
+                    $preco = $this->precoPorTexto($this->textoPrimeiro($node, ['.price-old']))
+                        ?? $this->precoPorTexto($this->textoPrimeiro($node, ['.price-new', '.product-price-new', '.special-price', '.price']));
 
                     $imagem = null;
                     try {
@@ -96,12 +87,23 @@ class MartineliScraper extends BaseScraper
                     } catch (\Exception $e) {
                     }
 
+                    // OpenCart lista curta descrição no card — filtra placeholder ".."
+                    $descricao = null;
+                    try {
+                        $txt = trim($node->filter('.description')->first()->text());
+                        if (strlen($txt) > 5) {
+                            $descricao = mb_substr(strip_tags($txt), 0, 300);
+                        }
+                    } catch (\Exception $e) {
+                    }
+
                     $resultados[] = [
                         'nome'      => $nome,
-                        'descricao' => null,
+                        'descricao' => $descricao,
                         'preco'     => $preco,
                         'url'       => $href,
                         'imagem'    => $imagem,
+                        'codigo'    => null,
                     ];
                 });
 

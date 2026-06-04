@@ -57,7 +57,33 @@ class QueryNormalizerTest extends TestCase
         $tokens = QueryNormalizer::tokenizar('chave 8 mm');
         $this->assertNotContains('8', $tokens);
         $this->assertContains('chave', $tokens);
-        $this->assertContains('mm', $tokens);
+        $this->assertContains('8mm', $tokens);
+    }
+
+    public function test_tokenizar_preserva_fracoes_medidas_e_codigos(): void
+    {
+        $tokens = QueryNormalizer::tokenizar('CHAVE PHILIPS 1/4" X 4" GEDORE-015.644');
+
+        $this->assertContains('1/4', $tokens);
+        $this->assertContains('4pol', $tokens);
+        $this->assertContains('gedore015644', $tokens);
+    }
+
+    public function test_tokenizar_preserva_intervalo_de_medidas(): void
+    {
+        $tokens = QueryNormalizer::tokenizar('JOGO CHAVE COMBINADA 6MM A 32MM');
+
+        $this->assertContains('6mm', $tokens);
+        $this->assertContains('32mm', $tokens);
+    }
+
+    public function test_tokenizar_expande_intervalo_com_hifen_e_unidade_no_final(): void
+    {
+        $tokens = QueryNormalizer::tokenizar('Jogo Chave Estrela 6-32mm');
+
+        $this->assertContains('6mm', $tokens);
+        $this->assertContains('32mm', $tokens);
+        $this->assertNotContains('632mm', $tokens);
     }
 
     // -------------------------------------------------------------------------

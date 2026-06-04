@@ -5,28 +5,43 @@ namespace App\Services\Scrapers;
 /**
  * Filters and ranks scraper results by relevance to the original search term.
  *
- * Scoring strategy (0.0 – 1.0):
- *   score = matched_query_tokens / total_query_tokens
+ * Scoring strategy — final score = max of:
+ *   - nome_score    (full weight)   — fraction of query tokens found in the product title
+ *   - codigo_score  (full weight)   — same, applied to the product reference/code
+ *   - desc_score    (0.75 weight)   — same, applied to the product description
  *
  * Token matching considers:
  *   - Exact match after normalization
- *   - Plural/singular variation (strip trailing 's')
+ *   - Plural/singular variation via a minimal Portuguese stemmer
  *   - Known domain synonyms (via QueryNormalizer::sinonimos)
  *   - Fuzzy similarity for longer words (similar_text >= 85%)
  *
- * Results below THRESHOLD are discarded; the rest are sorted by score descending.
+ * Results with final score < THRESHOLD are discarded; survivors are sorted by score descending.
  */
 class RelevanceFilter
 {
-    /** Minimum fraction of query tokens that must appear in a result name. */
+    /** Minimum score for a result to be included. */
     private const THRESHOLD = 0.5;
+
+    /** Weight applied to description scores (lower than title/code to avoid noise). */
+    private const DESC_WEIGHT = 0.75;
+
+    /**
+     * Kit/conjunto words: if the query does NOT contain any of these, results
+     * whose name contains them are discarded (user searched a single tool, not a set).
+     */
+    private const PALAVRAS_KIT = ['jogo', 'kit', 'conjunto', 'berco', 'maleta', 'suporte', 'porta'];
 
     /**
      * Filters $resultados to those relevant to $termo, sorted by score descending.
      * If the term produces no tokens (too short / all stopwords), returns as-is.
      *
-     * @param  array<array{nome: string, ...}> $resultados
-     * @return array<array{nome: string, ...}>
+     * Two passes:
+     *   1. Relevance score — discards results below THRESHOLD
+     *   2. Kit filter     — discards kits/sets when the query is for a single tool
+     *
+     * @param  array<array{nome: string, descricao: string|null, codigo: string|null, ...}> $resultados
+     * @return array<array{nome: string, descricao: string|null, codigo: string|null, ...}>
      */
     public static function filtrar(array $resultados, string $termo): array
     {
@@ -36,14 +51,23 @@ class RelevanceFilter
             return $resultados;
         }
 
+        $queryTemKit = !empty(array_intersect($queryTokens, self::PALAVRAS_KIT));
+
         $pontuados = [];
 
         foreach ($resultados as $resultado) {
-            $score = self::pontuar($resultado['nome'] ?? '', $queryTokens);
+            $score = self::pontuar($resultado, $queryTokens);
 
-            if ($score >= self::THRESHOLD) {
-                $pontuados[] = ['r' => $resultado, 's' => $score];
+            if ($score < self::THRESHOLD) {
+                continue;
             }
+
+            // Discard kits/sets when the user did not ask for one
+            if (!$queryTemKit && self::eKit($resultado['nome'] ?? '')) {
+                continue;
+            }
+
+            $pontuados[] = ['r' => $resultado, 's' => $score];
         }
 
         usort($pontuados, fn ($a, $b) => $b['s'] <=> $a['s']);
@@ -52,27 +76,56 @@ class RelevanceFilter
     }
 
     /**
-     * Returns a relevance score [0.0, 1.0] for a product name against the query tokens.
+     * Returns a relevance score [0.0, 1.0] for a result array against the query tokens.
      *
-     * @param string[] $queryTokens
+     * Scores each available field (nome, codigo, descricao) independently and
+     * returns the highest, so a code match or a description match can surface a
+     * result even when the title alone would not.
+     *
+     * @param  array{nome?: string, descricao?: string|null, codigo?: string|null} $resultado
+     * @param  string[] $queryTokens
      */
-    public static function pontuar(string $nome, array $queryTokens): float
+    public static function pontuar(array $resultado, array $queryTokens): float
     {
-        if (empty($nome) || empty($queryTokens)) {
+        if (empty($queryTokens)) {
             return 0.0;
         }
 
-        $nomeTokens = QueryNormalizer::tokenizar($nome);
+        $scores = [];
 
-        if (empty($nomeTokens)) {
+        if (!empty($resultado['nome'])) {
+            $scores[] = self::pontuarTexto($resultado['nome'], $queryTokens);
+        }
+
+        if (!empty($resultado['codigo'])) {
+            $scores[] = self::pontuarTexto($resultado['codigo'], $queryTokens);
+        }
+
+        if (!empty($resultado['descricao'])) {
+            $scores[] = self::pontuarTexto($resultado['descricao'], $queryTokens) * self::DESC_WEIGHT;
+        }
+
+        return empty($scores) ? 0.0 : max($scores);
+    }
+
+    /**
+     * Scores a single text field: fraction of query tokens found in the field tokens.
+     *
+     * @param string[] $queryTokens
+     */
+    private static function pontuarTexto(string $texto, array $queryTokens): float
+    {
+        $tokens = QueryNormalizer::tokenizar($texto);
+
+        if (empty($tokens)) {
             return 0.0;
         }
 
         $matched = 0;
 
         foreach ($queryTokens as $qToken) {
-            foreach ($nomeTokens as $nToken) {
-                if (self::tokensEquivalentes($qToken, $nToken)) {
+            foreach ($tokens as $tToken) {
+                if (self::tokensEquivalentes($qToken, $tToken)) {
                     $matched++;
                     break;
                 }
@@ -104,6 +157,10 @@ class RelevanceFilter
             return true;
         }
 
+        if ((strlen($a) >= 5 || strlen($b) >= 5) && (str_contains($a, $b) || str_contains($b, $a))) {
+            return true;
+        }
+
         // Domain synonym: check both original and stemmed forms to avoid
         // missing entries whose keys don't survive stemming (e.g. "philips" → "philip")
         $sinonimosA = array_unique(array_merge(
@@ -131,6 +188,16 @@ class RelevanceFilter
         }
 
         return false;
+    }
+
+    /**
+     * Returns true if the product name contains a kit/set word,
+     * indicating it is a bundle rather than a single tool.
+     */
+    private static function eKit(string $nome): bool
+    {
+        $tokens = QueryNormalizer::tokenizar($nome);
+        return !empty(array_intersect($tokens, self::PALAVRAS_KIT));
     }
 
     /**

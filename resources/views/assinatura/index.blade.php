@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Assinatura — Busca de Ferramentas</title>
+    <title>Assinatura — Planilhas de Cotação</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col">
@@ -38,9 +38,9 @@
                 </p>
 
                 <div class="flex flex-col gap-3">
-                    <a href="{{ route('ferramentas.index') }}"
+                    <a href="{{ route('planilhas.index') }}"
                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors text-sm">
-                        Acessar Ferramentas
+                        Acessar Planilhas
                     </a>
                     <form method="POST" action="{{ route('assinatura.portal') }}">
                         @csrf
@@ -85,19 +85,19 @@
                             <svg class="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>
-                            Pesquisa ilimitada em 9 lojas
+                            Importação e cotação de planilhas XLSX
                         </li>
                         <li class="flex items-center gap-2">
                             <svg class="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>
-                            Orçamentos com margem de lucro
+                            Seleção manual de itens cotados com margem
                         </li>
                         <li class="flex items-center gap-2">
                             <svg class="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>
-                            Exportação de orçamento em PDF
+                            Exportação no padrão Comlink
                         </li>
                         <li class="flex items-center gap-2">
                             <svg class="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -31,7 +31,7 @@ class LojaMecanicoScraper extends BaseScraper
         $body = json_encode([
             'query'                => $termo,
             'hitsPerPage'          => 10,
-            'attributesToRetrieve' => ['title', 'description', 'price', 'url', 'images', 'available'],
+            'attributesToRetrieve' => ['title', 'description', 'price', 'url', 'images', 'available', 'model'],
             'filters'              => 'available:true',
         ]);
 
@@ -64,12 +64,12 @@ class LojaMecanicoScraper extends BaseScraper
                 continue;
             }
 
-            // Preço: usa o valor à vista (cash), fallback para full
+            // Preço cotado: usa o valor cheio/normal, evitando desconto à vista.
             $preco = null;
-            if (!empty($hit['price']['cash'])) {
-                $preco = (float) $hit['price']['cash'];
-            } elseif (!empty($hit['price']['full'])) {
+            if (!empty($hit['price']['full'])) {
                 $preco = (float) $hit['price']['full'];
+            } elseif (!empty($hit['price']['cash'])) {
+                $preco = (float) $hit['price']['cash'];
             }
 
             // Imagem: primeira do array, monta URL completa
@@ -91,6 +91,7 @@ class LojaMecanicoScraper extends BaseScraper
                 'preco'     => $preco,
                 'url'       => $url,
                 'imagem'    => $imagem,
+                'codigo'    => $hit['model'] ?? null,
             ];
         }
 

@@ -50,12 +50,27 @@ class QueryNormalizer
     {
         $normalizado = mb_strtolower($termo, 'UTF-8');
         $normalizado = self::removerAcentos($normalizado);
-        $normalizado = preg_replace('/[^a-z0-9\s]/', ' ', $normalizado);
+        $normalizado = str_replace(['”', '″'], '"', $normalizado);
+        $normalizado = preg_replace('/\b(\d+)[,.](\d+\/\d+)\b/', '$1 $2', $normalizado) ?? $normalizado;
+        $normalizado = preg_replace(
+            '/\b(\d+(?:[,.]\d+)?)\s*(mm|cm|m|kg|g|pol|polegadas?|v|w|hp|cv)\s*(?:a|-)\s*(\d+(?:[,.]\d+)?)\s*(mm|cm|m|kg|g|pol|polegadas?|v|w|hp|cv)\b/u',
+            '$1$2 $3$4',
+            $normalizado,
+        ) ?? $normalizado;
+        $normalizado = preg_replace(
+            '/\b(\d+(?:[,.]\d+)?)\s*(?:a|-)\s*(\d+(?:[,.]\d+)?)\s*(mm|cm|m|kg|g|pol|polegadas?|v|w|hp|cv)\b/u',
+            '$1$3 $2$3',
+            $normalizado,
+        ) ?? $normalizado;
 
-        $tokens = preg_split('/\s+/', $normalizado, -1, PREG_SPLIT_NO_EMPTY);
+        preg_match_all(
+            '/\b\d+\/\d+\b|\b\d+(?:[,.]\d+)?\s*(?:"|(?:mm|cm|m|kg|g|pol|polegadas?|v|w|hp|cv)\b)|\b(?=[a-z0-9.-]*\d)[a-z0-9]+(?:[.-][a-z0-9]+)*\b|\b[a-z]+\b/u',
+            $normalizado,
+            $matches,
+        );
 
         $tokens = array_filter(
-            $tokens,
+            array_map(fn (string $token): string => self::normalizarToken($token), $matches[0] ?? []),
             fn (string $t) => strlen($t) >= 2 && !in_array($t, self::STOPWORDS, true),
         );
 
@@ -106,5 +121,25 @@ class QueryNormalizer
         ];
 
         return strtr($str, $map);
+    }
+
+    private static function normalizarToken(string $token): string
+    {
+        $token = trim($token);
+        $token = preg_replace('/\s+/', '', $token) ?? $token;
+
+        if (str_contains($token, '"')) {
+            $token = str_replace('"', 'pol', $token);
+        }
+
+        if (preg_match('/^\d+(?:[,.]\d+)?(?:mm|cm|m|kg|g|pol|polegadas?|v|w|hp|cv)$/', $token) === 1) {
+            return str_replace(',', '.', preg_replace('/polegadas?$/', 'pol', $token) ?? $token);
+        }
+
+        if (str_contains($token, '/')) {
+            return $token;
+        }
+
+        return preg_replace('/[^a-z0-9]/', '', $token) ?? '';
     }
 }

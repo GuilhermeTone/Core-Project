@@ -18,10 +18,11 @@ class BuscarNoSiteJob implements ShouldQueue
     use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 90;
-    public int $tries   = 2;
+
+    public int $tries = 2;
 
     public function __construct(
-        public readonly int    $buscaId,
+        public readonly int $buscaId,
         public readonly string $scraperIdentificador,
     ) {}
 
@@ -35,93 +36,28 @@ class BuscarNoSiteJob implements ShouldQueue
         $busca = FerramentaBusca::findOrFail($this->buscaId);
 
         try {
-            $scraper    = $crawler->getScraper($this->scraperIdentificador);
-            $resultados = $scraper->buscar($busca->termo);
+            $resultados = $crawler->buscarEmLoja($busca->termo, $this->scraperIdentificador);
 
             foreach ($resultados as $item) {
-                if (!$this->eRelevante($item['nome'] ?? '', $busca->termo)) {
-                    Log::debug("BuscarNoSiteJob [{$this->scraperIdentificador}] descartado por irrelevância: \"{$item['nome']}\" para termo \"{$busca->termo}\"");
-                    continue;
-                }
-
                 ResultadoBusca::create([
                     'ferramenta_busca_id' => $busca->id,
-                    'site'                => $scraper->identificador(),
-                    'nome'                => $item['nome'],
-                    'descricao'           => $item['descricao'] ?? null,
-                    'preco'               => $item['preco'],
-                    'url'                 => $item['url'],
-                    'imagem'              => $item['imagem'] ?? null,
-                    'mais_barato'         => false,
+                    'site' => $item['site'] ?? $this->scraperIdentificador,
+                    'nome' => $item['nome'],
+                    'descricao' => $item['descricao'] ?? null,
+                    'preco' => $item['preco'],
+                    'url' => $item['url'],
+                    'imagem' => $item['imagem'] ?? null,
+                    'mais_barato' => false,
+                    'marca_detectada' => $item['marca_detectada'] ?? null,
+                    'score_confianca_marca' => $item['score_confianca_marca'] ?? null,
+                    'atributos_extraidos' => $item['atributos_extraidos'] ?? null,
+                    'score_produto' => $item['score_produto'] ?? null,
+                    'correspondencia_fraca' => $item['correspondencia_fraca'] ?? false,
                 ]);
             }
         } catch (\Exception $e) {
-            Log::warning("BuscarNoSiteJob [{$this->scraperIdentificador}] erro: " . $e->getMessage());
+            Log::warning("BuscarNoSiteJob [{$this->scraperIdentificador}] erro: ".$e->getMessage());
             // Não re-lança: permite que os outros sites do batch continuem
         }
-    }
-
-    /**
-     * Palavras que indicam kit/conjunto. Se aparecerem no produto mas não na busca, o item é descartado.
-     */
-    private const PALAVRAS_KIT = ['jogo', 'kit', 'conjunto', 'berco', 'maleta', 'suporte', 'porta'];
-
-    /**
-     * Verifica se o nome do produto contém TODAS as palavras significativas do termo buscado
-     * e não é um kit/conjunto quando o usuário não buscou por um.
-     * "Significativa" = 3+ caracteres (ignora preposições como "de", "da", "em", "com").
-     */
-    private function eRelevante(string $nomeItem, string $termoBusca): bool
-    {
-        if (empty($nomeItem)) {
-            return false;
-        }
-
-        $normItem  = $this->normalizar($nomeItem);
-        $normTermo = $this->normalizar($termoBusca);
-
-        $palavras = preg_split('/\s+/', $normTermo, -1, PREG_SPLIT_NO_EMPTY);
-        $palavrasSignificativas = array_filter($palavras, fn (string $p) => mb_strlen($p) >= 3);
-
-        if (empty($palavrasSignificativas)) {
-            return true; // termo muito curto — aceita tudo
-        }
-
-        // Todas as palavras significativas do termo devem estar no nome do produto
-        foreach ($palavrasSignificativas as $palavra) {
-            if (mb_strpos($normItem, $palavra) === false) {
-                return false;
-            }
-        }
-
-        // Se o produto contém palavra de kit/conjunto mas a busca não, descarta
-        foreach (self::PALAVRAS_KIT as $palavraKit) {
-            $itemTemKit  = mb_strpos($normItem, $palavraKit) !== false;
-            $buscarKit   = mb_strpos($normTermo, $palavraKit) !== false;
-            if ($itemTemKit && !$buscarKit) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * Remove acentos e coloca em minúsculas para comparação.
-     */
-    private function normalizar(string $texto): string
-    {
-        $texto = mb_strtolower($texto, 'UTF-8');
-        $mapa  = [
-            '/[àáâãä]/u' => 'a',
-            '/[èéêë]/u'  => 'e',
-            '/[ìíîï]/u'  => 'i',
-            '/[òóôõö]/u' => 'o',
-            '/[ùúûü]/u'  => 'u',
-            '/[ç]/u'     => 'c',
-            '/[ñ]/u'     => 'n',
-        ];
-
-        return preg_replace(array_keys($mapa), array_values($mapa), $texto);
     }
 }

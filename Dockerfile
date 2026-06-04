@@ -8,6 +8,7 @@ ARG uid=1000
 RUN apt-get update && apt-get install -y --no-install-recommends --fix-missing \
     git \
     curl \
+    libzip-dev \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
@@ -17,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends --fix-missing \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd sockets
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd sockets zip
 
 # Get latest Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer

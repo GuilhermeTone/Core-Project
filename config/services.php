@@ -28,6 +28,15 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'mercadolivre' => [
+        'app_id' => env('ML_APP_ID'),
+        'secret' => env('ML_SECRET'),
+    ],
+
+    'serper' => [
+        'api_key' => env('SERPER_API_KEY'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

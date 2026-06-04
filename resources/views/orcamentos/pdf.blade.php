@@ -5,7 +5,7 @@
     <title>{{ $orcamento->nome }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #1f2937; background: #fff; }
+        body { font-family: Helvetica, DejaVu Sans, sans-serif; font-size: 11px; color: #1f2937; background: #fff; }
 
         .header { background: #1d4ed8; color: #fff; padding: 24px 30px; margin-bottom: 24px; }
         .header h1 { font-size: 20px; font-weight: bold; margin-bottom: 4px; }
@@ -20,9 +20,7 @@
         .total-card { flex: 1; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 14px; text-align: center; }
         .total-card .label { font-size: 9px; color: #6b7280; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
         .total-card .valor { font-size: 14px; font-weight: bold; }
-        .total-card.custo .valor  { color: #1d4ed8; }
-        .total-card.venda .valor  { color: #16a34a; }
-        .total-card.lucro .valor  { color: #d97706; }
+        .total-card.total .valor  { color: #16a34a; font-size: 16px; }
 
         table { width: 100%; border-collapse: collapse; margin-top: 4px; }
         thead tr { background: #f3f4f6; }
@@ -30,17 +28,16 @@
         th.right { text-align: right; }
         th.center { text-align: center; }
 
-        td { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+        td { padding: 9px 10px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; font-size: 10.5px; line-height: 1.35; }
         td.right { text-align: right; }
         td.center { text-align: center; }
 
         tr:nth-child(even) td { background: #f9fafb; }
 
-        .prod-nome { font-weight: 600; font-size: 11px; }
-        .prod-site { font-size: 9px; color: #9ca3af; margin-top: 2px; }
+        .prod-nome { font-family: Helvetica, DejaVu Sans, sans-serif; font-weight: bold; font-size: 10.8px; color: #111827; line-height: 1.35; }
+        .prod-site { font-size: 8.5px; color: #9ca3af; margin-top: 3px; text-transform: uppercase; letter-spacing: .3px; }
 
         tfoot tr td { border-top: 2px solid #d1d5db; font-weight: bold; background: #f3f4f6; }
-        .total-custo { color: #1d4ed8; }
         .total-venda { color: #16a34a; font-size: 13px; }
 
         .obs { margin-top: 20px; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px 14px; background: #fafafa; }
@@ -76,26 +73,16 @@
 
         {{-- Totais --}}
         @php
-            $totalCusto = $orcamento->itens->sum(fn($i) => $i->preco_custo * $i->quantidade);
             $totalVenda = $orcamento->itens->sum(fn($i) => $i->precoVenda() * $i->quantidade);
-            $lucro      = $totalVenda - $totalCusto;
         @endphp
         <div class="totais">
             <div class="total-card">
                 <div class="label">Itens</div>
                 <div class="valor" style="color:#374151">{{ $orcamento->itens->count() }}</div>
             </div>
-            <div class="total-card custo">
-                <div class="label">Custo Total</div>
-                <div class="valor">R$ {{ number_format($totalCusto, 2, ',', '.') }}</div>
-            </div>
-            <div class="total-card venda">
-                <div class="label">Venda Total</div>
+            <div class="total-card total">
+                <div class="label">Valor Total</div>
                 <div class="valor">R$ {{ number_format($totalVenda, 2, ',', '.') }}</div>
-            </div>
-            <div class="total-card lucro">
-                <div class="label">Lucro Estimado</div>
-                <div class="valor">R$ {{ number_format($lucro, 2, ',', '.') }}</div>
             </div>
         </div>
 
@@ -103,18 +90,15 @@
         <table>
             <thead>
                 <tr>
-                    <th style="width:40%">Produto</th>
-                    <th class="right">Custo Unit.</th>
+                    <th style="width:55%">Produto</th>
                     <th class="center">Qtd</th>
-                    <th class="center">Margem</th>
-                    <th class="right">Venda Unit.</th>
-                    <th class="right">Total Venda</th>
+                    <th class="right">Valor Unit.</th>
+                    <th class="right">Total</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($orcamento->itens as $item)
                 @php
-                    $margem      = $item->margem !== null ? $item->margem : $orcamento->margem_padrao;
                     $precoVenda  = $item->precoVenda();
                     $totalItem   = $precoVenda * $item->quantidade;
                 @endphp
@@ -125,9 +109,7 @@
                             <div class="prod-site">{{ $item->site }}</div>
                         @endif
                     </td>
-                    <td class="right">R$ {{ number_format($item->preco_custo, 2, ',', '.') }}</td>
                     <td class="center">{{ $item->quantidade }}</td>
-                    <td class="center">{{ number_format($margem, 1, ',', '.') }}%</td>
                     <td class="right">R$ {{ number_format($precoVenda, 2, ',', '.') }}</td>
                     <td class="right">R$ {{ number_format($totalItem, 2, ',', '.') }}</td>
                 </tr>
@@ -135,8 +117,7 @@
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="4" style="text-align:right;font-size:10px;color:#6b7280">Totais</td>
-                    <td class="right total-custo">R$ {{ number_format($totalCusto, 2, ',', '.') }}</td>
+                    <td colspan="3" style="text-align:right;font-size:10px;color:#6b7280">Total do orçamento</td>
                     <td class="right total-venda">R$ {{ number_format($totalVenda, 2, ',', '.') }}</td>
                 </tr>
             </tfoot>

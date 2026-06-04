@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Comparador de Ferramentas</title>
+    <title>Buscas específicas</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
@@ -27,18 +27,12 @@
 
     <x-app-header>
         <x-slot:slot>
-            <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-600 text-white text-xl shrink-0">&#128295;</div>
+            <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-600 text-white text-xl shrink-0">&#128269;</div>
             <div>
-                <h1 class="text-xl font-bold text-gray-900">Comparador de Ferramentas</h1>
-                <p class="text-xs text-gray-500 hidden sm:block">Pesquise em múltiplas lojas ao mesmo tempo</p>
+                <h1 class="text-xl font-bold text-gray-900">Buscas específicas</h1>
+                <p class="text-xs text-gray-500 hidden sm:block">Pesquise itens fora das lojas cadastradas</p>
             </div>
         </x-slot:slot>
-        <x-slot:actions>
-            <a href="{{ route('orcamentos.index') }}"
-               class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-                &#128203; Orçamentos
-            </a>
-        </x-slot:actions>
     </x-app-header>
 
     <main class="max-w-5xl mx-auto px-4 py-6 space-y-4"
@@ -51,13 +45,13 @@
                 <input
                     type="text"
                     x-model="termo"
-                    placeholder="Ex.: chave combinada, alicate universal, chave de fenda..."
+                    placeholder="Ex.: Tinta amarelo Maza 3,6L, torneira cozinha, peça específica..."
                     class="flex-1 border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     autocomplete="off"
                 />
                 <button
                     type="submit"
-                    :disabled="enviando || termo.trim().length < 2 || lojasSelecionadas.length === 0"
+                    :disabled="enviando || termo.trim().length < 2"
                     class="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors whitespace-nowrap"
                 >
                     <template x-if="!enviando"><span>&#128269; Buscar</span></template>
@@ -74,45 +68,24 @@
             </form>
             <p x-show="erroEnvio" x-cloak class="mt-2 text-xs text-red-600" x-text="erroEnvio"></p>
 
-            {{-- ── Filtro de lojas ── --}}
-            <div>
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Lojas</span>
-                    <div class="flex gap-2">
-                        <button type="button" @click="selecionarTodasLojas()"
-                            class="text-xs text-blue-600 hover:underline">Todas</button>
-                        <span class="text-gray-300">|</span>
-                        <button type="button" @click="desmarcarTodasLojas()"
-                            class="text-xs text-gray-500 hover:underline">Nenhuma</button>
-                    </div>
-                </div>
+            {{-- ── Marcas trabalhadas ── --}}
+            <div class="pt-3 border-t border-gray-100">
+                <span class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Marcas que trabalhamos</span>
                 <div class="flex flex-wrap gap-2">
-                    <template x-for="loja in todasLojas" :key="loja.id">
-                        <label class="flex items-center gap-1.5 cursor-pointer select-none
-                                      border rounded-full px-3 py-1 text-xs font-medium transition-colors"
-                               :class="lojasSelecionadas.includes(loja.id)
-                                   ? 'bg-blue-600 text-white border-blue-600'
-                                   : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'">
-                            <input type="checkbox"
-                                   class="sr-only"
-                                   :value="loja.id"
-                                   :checked="lojasSelecionadas.includes(loja.id)"
-                                   @change="toggleLoja(loja.id)">
-                            <span x-text="loja.nome"></span>
-                        </label>
-                    </template>
+                    @foreach ($marcasTrabalhadas as $marca)
+                        <span class="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-700">
+                            {{ $marca }}
+                        </span>
+                    @endforeach
                 </div>
-                <p x-show="lojasSelecionadas.length === 0" x-cloak class="mt-1 text-xs text-red-500">
-                    Selecione ao menos uma loja.
-                </p>
             </div>
         </div>
 
         {{-- ── Estado vazio ── --}}
         <template x-if="buscas.length === 0">
             <div class="text-center py-16 text-gray-400">
-                <div class="text-5xl mb-3">&#128295;</div>
-                <p class="text-sm">Nenhuma busca ainda. Comece digitando o nome de uma ferramenta.</p>
+                <div class="text-5xl mb-3">&#128269;</div>
+                <p class="text-sm">Nenhuma busca ainda. Digite um produto específico para consultar.</p>
             </div>
         </template>
 
@@ -232,7 +205,6 @@
                                     <th class="px-4 py-2 text-left w-28">Loja</th>
                                     <th class="px-4 py-2 text-right w-28">Preço</th>
                                     <th class="px-4 py-2 text-center w-24">Link</th>
-                                    <th class="px-4 py-2 text-center w-24">Orçar</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -279,13 +251,6 @@
                                                 Comprar ↗
                                             </a>
                                         </td>
-
-                                        <td class="px-4 py-2 text-center">
-                                            <button @click="abrirModalOrcamento(item)"
-                                                    class="inline-block bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap">
-                                                + Orçar
-                                            </button>
-                                        </td>
                                     </tr>
                                 </template>
                             </tbody>
@@ -296,140 +261,19 @@
             </div>
         </template>
 
-        {{-- ── Modal: Adicionar ao Orçamento ── --}}
-        <div x-show="modalAberto" x-cloak
-             class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-             @keydown.escape.window="fecharModal()">
-            <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4 fade-in"
-                 @click.stop>
-
-                <div class="flex items-center justify-between">
-                    <h2 class="text-base font-bold text-gray-900">Adicionar ao Orçamento</h2>
-                    <button @click="fecharModal()" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
-                </div>
-
-                <div class="bg-gray-50 rounded-lg p-3 text-sm text-gray-700 border border-gray-200">
-                    <p class="font-medium truncate" x-text="itemSelecionado?.nome"></p>
-                    <p class="text-xs text-gray-400 mt-0.5" x-text="itemSelecionado?.preco_formatado"></p>
-                </div>
-
-                {{-- Quantidade --}}
-                <div>
-                    <label class="block text-xs font-semibold text-gray-600 mb-1">Quantidade</label>
-                    <input type="number" x-model.number="modalQtd" min="1"
-                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-                </div>
-
-                {{-- Selecionar ou criar orçamento (campo com pesquisa) --}}
-                <div x-data="buscaOrcamento()" x-init="iniciar()">
-                    <label class="block text-xs font-semibold text-gray-600 mb-1">Orçamento</label>
-
-                    <div class="relative">
-                        <input
-                            type="text"
-                            x-model="busca"
-                            @focus="aberto = true"
-                            @input="aberto = true"
-                            @keydown.escape="aberto = false"
-                            @keydown.arrow-down.prevent="moverFoco(1)"
-                            @keydown.arrow-up.prevent="moverFoco(-1)"
-                            @keydown.enter.prevent="selecionarFocado()"
-                            :placeholder="selecionado ? selecionado.nome : '🔍 Buscar ou criar orçamento...'"
-                            :class="selecionado ? 'font-medium text-gray-900' : 'text-gray-500'"
-                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 pr-8"
-                            autocomplete="off"
-                        >
-                        <template x-if="selecionado">
-                            <button type="button" @click="limpar()"
-                                    class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none">
-                                &times;
-                            </button>
-                        </template>
-
-                        <div x-show="aberto && !selecionado" x-cloak
-                             @click.outside="aberto = false"
-                             class="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-52 overflow-y-auto">
-                            <button type="button"
-                                    @click="criarNovo()"
-                                    :class="foco === -1 ? 'bg-green-50 text-green-700' : 'text-gray-600 hover:bg-gray-50'"
-                                    class="w-full text-left px-3 py-2.5 text-sm font-medium border-b border-gray-100 flex items-center gap-2">
-                                <span class="text-green-600 font-bold">+</span>
-                                <span x-text="busca.trim() ? 'Criar &quot;' + busca.trim() + '&quot;' : 'Criar novo orçamento'"></span>
-                            </button>
-                            <template x-for="(orc, idx) in filtrados()" :key="orc.id">
-                                <button type="button"
-                                        @click="selecionar(orc)"
-                                        :class="foco === idx ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'"
-                                        class="w-full text-left px-3 py-2.5 text-sm flex items-center justify-between gap-2">
-                                    <span x-text="orc.nome" class="truncate"></span>
-                                    <span class="shrink-0 text-xs text-gray-400" x-text="(orc.itens_count || 0) + ' item(ns)'"></span>
-                                </button>
-                            </template>
-                            <template x-if="filtrados().length === 0 && busca.trim()">
-                                <p class="px-3 py-2 text-xs text-gray-400">Nenhum orçamento encontrado. Use + para criar.</p>
-                            </template>
-                        </div>
-                    </div>
-
-                    <div x-show="criandoNovo" x-cloak class="space-y-2 mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                        <p class="text-xs font-semibold text-green-700">Novo orçamento</p>
-                        <input type="text" x-model="novoNome"
-                               placeholder="Nome do orçamento *"
-                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-                        <input type="text" x-model="novoCliente"
-                               placeholder="Cliente (opcional)"
-                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-                        <button type="button" @click="cancelarNovo()"
-                                class="text-xs text-gray-500 hover:underline">Cancelar</button>
-                    </div>
-                </div>
-
-                <p x-show="modalErro" x-cloak class="text-xs text-red-600" x-text="modalErro"></p>
-
-                <div class="flex gap-2 pt-1">
-                    <button @click="fecharModal()"
-                            class="flex-1 border border-gray-300 text-gray-600 text-sm font-medium py-2 rounded-lg hover:bg-gray-50 transition-colors">
-                        Cancelar
-                    </button>
-                    <button @click="confirmarOrcamento()"
-                            :disabled="modalSalvando"
-                            class="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white text-sm font-semibold py-2 rounded-lg transition-colors">
-                        <span x-show="!modalSalvando">Adicionar</span>
-                        <span x-show="modalSalvando">Salvando...</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-
     </main>
 
     <footer class="text-center text-xs text-gray-400 py-6">
-        Comparador de Ferramentas &mdash; dados coletados em tempo real
+        Buscas específicas &mdash; dados coletados em tempo real
     </footer>
 
     <script>
     const SITE_NOMES = {
-        mercadolivre:   'Mercado Livre',
-        lojadomecanico: 'Loja do Mecânico',
-        anhanguera:     'Anhanguera Ferramentas',
-        antferramentas: 'ANT Ferramentas',
-        kennedy:        'Ferramentas Kennedy',
-        lfmaquinas:     'LF Máquinas',
-        martineli:      'Martineli Ferramentas',
-        mabore:         'Mabore Ferramentas',
-        fermaquinas:    'Fermáquinas',
+        serper:         'Google Shopping',
     };
 
     const SITE_BADGE_CLASSES = {
-        mercadolivre:   'bg-yellow-100 text-yellow-800 border-yellow-300',
-        lojadomecanico: 'bg-blue-100 text-blue-800 border-blue-300',
-        anhanguera:     'bg-orange-100 text-orange-800 border-orange-300',
-        antferramentas: 'bg-red-100 text-red-800 border-red-300',
-        kennedy:        'bg-purple-100 text-purple-800 border-purple-300',
-        lfmaquinas:     'bg-teal-100 text-teal-800 border-teal-300',
-        martineli:      'bg-green-100 text-green-800 border-green-300',
-        mabore:         'bg-pink-100 text-pink-800 border-pink-300',
-        fermaquinas:    'bg-indigo-100 text-indigo-800 border-indigo-300',
+        serper:         'bg-blue-100 text-blue-800 border-blue-300',
     };
 
     function mapearResultado(r) {
@@ -497,59 +341,22 @@
             erroEnvio:          null,
             buscas:             [],
             polling:            null,
-            todasLojas:         @json($listaLojas),
-            lojasSelecionadas:  @json($listaLojas).map(l => l.id),
-
-            // Modal de orçamento
-            modalAberto:     false,
-            itemSelecionado: null,
-            modalQtd:        1,
-            modalErro:       null,
-            modalSalvando:   false,
-            orcamentos:      [],
 
             init() {
                 const iniciais = @json($buscasJson);
                 this.buscas = iniciais.map(b => montarBusca(b, null));
                 this.polling = setInterval(() => this.pollAtivas(), 2000);
-                this.carregarOrcamentos();
-            },
-
-            async carregarOrcamentos() {
-                try {
-                    const res = await axios.get('/orcamentos/listar');
-                    this.orcamentos = res.data;
-                    window._orcamentosGlobal = this.orcamentos;
-                } catch (_) {}
-            },
-
-            toggleLoja(id) {
-                if (this.lojasSelecionadas.includes(id)) {
-                    this.lojasSelecionadas = this.lojasSelecionadas.filter(l => l !== id);
-                } else {
-                    this.lojasSelecionadas.push(id);
-                }
-            },
-
-            selecionarTodasLojas() {
-                this.lojasSelecionadas = this.todasLojas.map(l => l.id);
-            },
-
-            desmarcarTodasLojas() {
-                this.lojasSelecionadas = [];
             },
 
             async buscar() {
                 if (this.termo.trim().length < 2) return;
-                if (this.lojasSelecionadas.length === 0) return;
                 this.enviando  = true;
                 this.erroEnvio = null;
                 const termoEnviado = this.termo.trim();
 
                 try {
-                    const res = await axios.post('/ferramentas/buscar', {
+                    const res = await axios.post('/buscas-especificas/buscar', {
                         termo: termoEnviado,
-                        lojas: this.lojasSelecionadas,
                     });
                     this.buscas.unshift(montarBusca({
                         id:        res.data.busca_id,
@@ -576,7 +383,7 @@
 
             async atualizar(busca) {
                 try {
-                    const res  = await axios.get(`/ferramentas/${busca.id}/status`);
+                    const res  = await axios.get(`/buscas-especificas/${busca.id}/status`);
                     const idx  = this.buscas.findIndex(b => b.id === busca.id);
                     if (idx === -1) return;
                     const atual = this.buscas[idx];
@@ -605,169 +412,9 @@
             async excluir(busca) {
                 if (!confirm(`Excluir busca "${busca.termo}"?`)) return;
                 try {
-                    await axios.delete(`/ferramentas/${busca.id}`);
+                    await axios.delete(`/buscas-especificas/${busca.id}`);
                     this.buscas = this.buscas.filter(b => b.id !== busca.id);
                 } catch (_) { alert('Não foi possível excluir.'); }
-            },
-
-            abrirModalOrcamento(item) {
-                this.itemSelecionado = item;
-                this.modalQtd        = 1;
-                this.modalErro       = null;
-                this.modalSalvando   = false;
-                this.modalAberto     = true;
-                // Dispara reset no componente filho buscaOrcamento
-                window.dispatchEvent(new CustomEvent('reset-busca-orcamento'));
-            },
-
-            fecharModal() {
-                this.modalAberto     = false;
-                this.itemSelecionado = null;
-            },
-
-            async confirmarOrcamento() {
-                this.modalErro = null;
-                if (!this.itemSelecionado) return;
-                if (this.modalQtd < 1) { this.modalErro = 'Quantidade inválida.'; return; }
-
-                // Coleta dados do componente filho via evento
-                const ev = new CustomEvent('get-orcamento-selecionado', { detail: {} });
-                window.dispatchEvent(ev);
-                // Aguarda resposta via variável global temporária
-                await new Promise(r => setTimeout(r, 0));
-                const dados = window._orcamentoSelecionado || {};
-
-                const { orcId, novoNome, novoCliente, criandoNovo } = dados;
-
-                if (!orcId && !criandoNovo) {
-                    this.modalErro = 'Selecione ou crie um orçamento.';
-                    return;
-                }
-                if (criandoNovo && !novoNome?.trim()) {
-                    this.modalErro = 'Informe um nome para o orçamento.';
-                    return;
-                }
-
-                this.modalSalvando = true;
-                try {
-                    let idFinal = orcId;
-
-                    if (criandoNovo) {
-                        const resOrc = await axios.post('/orcamentos', {
-                            nome:    novoNome.trim(),
-                            cliente: novoCliente?.trim() || null,
-                        });
-                        idFinal = resOrc.data.id;
-                        this.orcamentos.unshift({ id: idFinal, nome: resOrc.data.nome, itens_count: 0 });
-                    }
-
-                    await axios.post(`/orcamentos/${idFinal}/itens`, {
-                        resultado_busca_id: this.itemSelecionado.id,
-                        nome:        this.itemSelecionado.nome,
-                        site:        this.itemSelecionado.site,
-                        preco_custo: this.itemSelecionado.preco,
-                        quantidade:  this.modalQtd,
-                        url:         this.itemSelecionado.url,
-                        imagem:      this.itemSelecionado.imagem,
-                    });
-
-                    // Incrementa contador no componente filho
-                    window.dispatchEvent(new CustomEvent('item-adicionado', { detail: { id: idFinal } }));
-                    this.fecharModal();
-                    alert('Item adicionado ao orçamento!');
-                } catch (e) {
-                    this.modalErro = e.response?.data?.message || 'Erro ao salvar.';
-                } finally {
-                    this.modalSalvando = false;
-                }
-            },
-        };
-    }
-
-    function buscaOrcamento() {
-        return {
-            busca:       '',
-            aberto:      false,
-            foco:        0,
-            selecionado: null,
-            criandoNovo: false,
-            novoNome:    '',
-            novoCliente: '',
-            _lista:      [],
-
-            iniciar() {
-                // Recebe lista de orçamentos do componente pai via evento
-                this._lista = Alpine.store ? [] : [];
-                // Usa a lista global
-                this._lista = window._orcamentosGlobal || [];
-
-                window.addEventListener('reset-busca-orcamento', () => {
-                    this.busca       = '';
-                    this.aberto      = false;
-                    this.foco        = 0;
-                    this.selecionado = null;
-                    this.criandoNovo = false;
-                    this.novoNome    = '';
-                    this.novoCliente = '';
-                    this._lista      = window._orcamentosGlobal || [];
-                });
-
-                window.addEventListener('get-orcamento-selecionado', () => {
-                    window._orcamentoSelecionado = {
-                        orcId:       this.selecionado?.id || null,
-                        criandoNovo: this.criandoNovo,
-                        novoNome:    this.novoNome,
-                        novoCliente: this.novoCliente,
-                    };
-                });
-
-                window.addEventListener('item-adicionado', (e) => {
-                    const orc = this._lista.find(o => o.id === e.detail.id);
-                    if (orc) orc.itens_count = (orc.itens_count || 0) + 1;
-                });
-            },
-
-            filtrados() {
-                const q = this.busca.trim().toLowerCase();
-                return this._lista.filter(o => !q || o.nome.toLowerCase().includes(q));
-            },
-
-            selecionar(orc) {
-                this.selecionado = orc;
-                this.criandoNovo = false;
-                this.busca       = '';
-                this.aberto      = false;
-            },
-
-            limpar() {
-                this.selecionado = null;
-                this.busca       = '';
-                this.aberto      = true;
-            },
-
-            criarNovo() {
-                this.criandoNovo = true;
-                this.novoNome    = this.busca.trim();
-                this.selecionado = null;
-                this.aberto      = false;
-                this.busca       = '';
-            },
-
-            cancelarNovo() {
-                this.criandoNovo = false;
-                this.novoNome    = '';
-                this.novoCliente = '';
-            },
-
-            moverFoco(dir) {
-                const max = this.filtrados().length - 1;
-                this.foco = Math.max(-1, Math.min(max, this.foco + dir));
-            },
-
-            selecionarFocado() {
-                if (this.foco === -1) { this.criarNovo(); return; }
-                const item = this.filtrados()[this.foco];
-                if (item) this.selecionar(item);
             },
         };
     }

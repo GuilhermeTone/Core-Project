@@ -16,7 +16,7 @@ class MaboreScraper extends BaseScraper
         return 'Mabore Ferramentas';
     }
 
-    public function buscar(string $termo): array
+    protected function executarBusca(string $termo): array
     {
         $query = urlencode($termo);
 
@@ -77,6 +77,7 @@ class MaboreScraper extends BaseScraper
                     'preco'     => $preco,
                     'url'       => $href,
                     'imagem'    => $imagem,
+                    'codigo'    => null,
                 ];
             });
         } catch (\Exception $e) {

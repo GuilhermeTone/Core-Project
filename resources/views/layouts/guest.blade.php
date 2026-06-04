@@ -19,7 +19,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                 </svg>
             </div>
-            <h1 class="text-lg font-bold text-gray-900">Comparador de Ferramentas</h1>
+            <h1 class="text-lg font-bold text-gray-900">Planilhas de Cotação</h1>
             <p class="text-xs text-gray-500 mt-1">Pesquise em múltiplas lojas ao mesmo tempo</p>
         </div>
 

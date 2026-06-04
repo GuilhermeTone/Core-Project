@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Assinatura Confirmada — Busca de Ferramentas</title>
+    <title>Assinatura Confirmada — Planilhas de Cotação</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 min-h-screen flex items-center justify-center px-4">
@@ -20,7 +20,7 @@
             Seu pagamento foi processado com sucesso. Você já pode usar todos os recursos da plataforma.
         </p>
 
-        <a href="{{ route('ferramentas.index') }}"
+        <a href="{{ route('planilhas.index') }}"
            class="inline-block w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors">
             Começar a usar
         </a>

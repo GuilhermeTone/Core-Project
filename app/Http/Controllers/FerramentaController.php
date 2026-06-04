@@ -2,17 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\BuscarFerramentaJob;
+use App\Jobs\BuscarSerperShoppingJob;
 use App\Models\FerramentaBusca;
 use App\Models\ResultadoBusca;
-use App\Services\CrawlerService;
+use App\Services\ProductEnrichmentService;
 use Illuminate\Http\Request;
 
 class FerramentaController extends Controller
 {
-    public function index(CrawlerService $crawler)
+    public function index()
     {
-        $listaLojas = $crawler->getListaLojas();
+        $marcasTrabalhadas = ProductEnrichmentService::marcasConhecidas();
 
         $buscasRecentes = FerramentaBusca::with(['resultados' => fn ($q) => $q->orderByRaw('mais_barato DESC')->orderBy('preco')])
             ->where('user_id', auth()->id())
@@ -20,60 +20,30 @@ class FerramentaController extends Controller
             ->limit(20)
             ->get();
 
-        $buscasJson = $buscasRecentes->map(fn (FerramentaBusca $b) => [
-            'id'               => $b->id,
-            'termo'            => $b->termo,
-            'status'           => $b->status,
-            'erro_mensagem'    => $b->erro_mensagem,
-            'total_sites'      => $b->total_sites,
-            'sites_concluidos' => $b->resultados->pluck('site')->unique()->count(),
-            'criado_em'        => $b->created_at->diffForHumans(),
-            'resultados'       => $b->resultados->map(fn (ResultadoBusca $r) => [
-                'id'              => $r->id,
-                'site'            => $r->site,
-                'nome_site'       => $r->nome_site,
-                'nome'            => $r->nome,
-                'preco'           => $r->preco,
-                'preco_formatado' => $r->preco ? 'R$ ' . number_format((float) $r->preco, 2, ',', '.') : 'Sem preço',
-                'url'             => $r->url,
-                'imagem'          => $r->imagem,
-                'mais_barato'     => (bool) $r->mais_barato,
-            ])->values()->all(),
-        ])->values()->all();
+        $buscasJson = $buscasRecentes->map(fn (FerramentaBusca $b) => $this->mapearBusca($b))->values()->all();
 
-        return view('ferramentas.index', compact('buscasRecentes', 'buscasJson', 'listaLojas'));
+        return view('ferramentas.index', compact('buscasRecentes', 'buscasJson', 'marcasTrabalhadas'));
     }
 
-    public function buscar(Request $request, CrawlerService $crawler)
+    public function buscar(Request $request)
     {
         $request->validate([
-            'termo'   => 'required|string|min:2|max:100',
-            'lojas'   => 'nullable|array',
-            'lojas.*' => 'string',
+            'termo' => 'required|string|min:2|max:100',
         ]);
-
-        $lojas = $request->lojas ?? null;
-
-        if (!empty($lojas)) {
-            $validos = $crawler->getIdentificadores();
-            $lojas   = array_values(array_intersect($lojas, $validos));
-            if (empty($lojas)) {
-                $lojas = null;
-            }
-        }
 
         $busca = FerramentaBusca::create([
             'user_id' => auth()->id(),
-            'termo'   => $request->termo,
-            'lojas'   => $lojas,
+            'termo' => $request->termo,
+            'lojas' => ['serper'],
+            'total_sites' => 1,
         ]);
 
-        BuscarFerramentaJob::dispatch($busca->id);
+        BuscarSerperShoppingJob::dispatch($busca->id);
 
         return response()->json([
             'busca_id' => $busca->id,
-            'status'   => $busca->status,
-            'message'  => 'Busca iniciada',
+            'status' => $busca->status,
+            'message' => 'Busca iniciada',
         ]);
     }
 
@@ -85,33 +55,110 @@ class FerramentaController extends Controller
             ->where('user_id', auth()->id())
             ->findOrFail($id);
 
-        $sitesEncontrados = $busca->resultados->pluck('site')->unique()->values()->toArray();
+        $buscaMapeada = $this->mapearBusca($busca);
 
         return response()->json([
-            'status'           => $busca->status,
-            'erro_mensagem'    => $busca->erro_mensagem,
-            'termo'            => $busca->termo,
-            'total_sites'      => $busca->total_sites,
-            'sites_concluidos' => count($sitesEncontrados),
-            'total'            => $busca->resultados->count(),
-            'resultados'       => $busca->resultados->map(fn (ResultadoBusca $r) => [
-                'id'              => $r->id,
-                'site'            => $r->site,
-                'nome_site'       => $r->nome_site,
-                'nome'            => $r->nome,
-                'descricao'       => $r->descricao,
-                'preco'           => $r->preco,
-                'preco_formatado' => $r->preco ? 'R$ ' . number_format((float) $r->preco, 2, ',', '.') : 'Sem preço',
-                'url'             => $r->url,
-                'imagem'          => $r->imagem,
-                'mais_barato'     => (bool) $r->mais_barato,
-            ]),
+            'status' => $busca->status,
+            'erro_mensagem' => $busca->erro_mensagem,
+            'termo' => $busca->termo,
+            'total_sites' => $busca->total_sites,
+            'sites_concluidos' => $busca->status === 'concluido' ? 1 : 0,
+            'total' => count($buscaMapeada['resultados']),
+            'resultados' => $buscaMapeada['resultados'],
         ]);
     }
 
     public function destroy(int $id)
     {
         FerramentaBusca::where('user_id', auth()->id())->findOrFail($id)->delete();
+
         return response()->json(['ok' => true]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function mapearBusca(FerramentaBusca $busca): array
+    {
+        $resultados = $busca->resultados
+            ->map(fn (ResultadoBusca $resultado) => $this->mapearResultado($resultado, $busca->termo))
+            ->filter()
+            ->values()
+            ->all();
+
+        $resultados = $this->recalcularMaisBarato($resultados);
+
+        return [
+            'id' => $busca->id,
+            'termo' => $busca->termo,
+            'status' => $busca->status,
+            'erro_mensagem' => $busca->erro_mensagem,
+            'total_sites' => $busca->total_sites,
+            'sites_concluidos' => $busca->status === 'concluido' ? 1 : 0,
+            'criado_em' => $busca->created_at->diffForHumans(),
+            'resultados' => $resultados,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function mapearResultado(ResultadoBusca $resultado, string $termo): ?array
+    {
+        if ($resultado->correspondencia_fraca) {
+            return null;
+        }
+
+        $nomeSite = $resultado->nome_site;
+        if ($resultado->site === 'serper') {
+            $nomeSite = $resultado->atributos_extraidos['loja_origem'] ?? $nomeSite;
+        }
+
+        return [
+            'id' => $resultado->id,
+            'site' => $resultado->site,
+            'nome_site' => $nomeSite,
+            'nome' => $resultado->nome,
+            'descricao' => $resultado->descricao,
+            'preco' => $resultado->preco,
+            'preco_formatado' => $resultado->preco ? 'R$ '.number_format((float) $resultado->preco, 2, ',', '.') : 'Sem preço',
+            'url' => $resultado->url,
+            'imagem' => $resultado->imagem,
+            'mais_barato' => false,
+            'marca_detectada' => $resultado->marca_detectada,
+            'score_confianca_marca' => $resultado->score_confianca_marca,
+            'atributos_extraidos' => $resultado->atributos_extraidos,
+            'score_produto' => $resultado->score_produto,
+            'correspondencia_fraca' => false,
+        ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $resultados
+     * @return array<int, array<string, mixed>>
+     */
+    private function recalcularMaisBarato(array $resultados): array
+    {
+        $menorIndice = null;
+        $menorPreco = null;
+
+        foreach ($resultados as $indice => $resultado) {
+            $preco = (float) ($resultado['preco'] ?? 0);
+
+            if ($preco <= 0) {
+                continue;
+            }
+
+            if ($menorPreco === null || $preco < $menorPreco) {
+                $menorPreco = $preco;
+                $menorIndice = $indice;
+            }
+        }
+
+        if ($menorIndice !== null) {
+            $resultados[$menorIndice]['mais_barato'] = true;
+        }
+
+        return $resultados;
     }
 }

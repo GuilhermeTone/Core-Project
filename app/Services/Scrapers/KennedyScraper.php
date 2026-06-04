@@ -17,7 +17,7 @@ class KennedyScraper extends BaseScraper
         return 'Ferramentas Kennedy';
     }
 
-    public function buscar(string $termo): array
+    protected function executarBusca(string $termo): array
     {
         $query = urlencode($termo);
         $url   = self::BASE_URL . "/busca?q={$query}";
@@ -71,12 +71,21 @@ class KennedyScraper extends BaseScraper
                 $imagem = self::CDN_URL . $product['imagens'][0]['url'];
             }
 
+            $descricao = null;
+            if (!empty($product['descricao'])) {
+                $descricao = mb_substr(strip_tags($product['descricao']), 0, 300);
+            }
+
+            // Tenta campos comuns de código de produto em backends Laravel/Inertia
+            $codigo = $product['codigo'] ?? $product['referencia'] ?? $product['sku'] ?? null;
+
             $resultados[] = [
                 'nome'      => $nome,
-                'descricao' => null,
+                'descricao' => $descricao,
                 'preco'     => $preco,
                 'url'       => $url,
                 'imagem'    => $imagem,
+                'codigo'    => $codigo,
             ];
 
             if (count($resultados) >= 10) {

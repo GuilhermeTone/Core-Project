@@ -7,7 +7,7 @@ namespace App\Services\Scrapers;
  *
  * Scoring strategy — final score = max of:
  *   - nome_score    (full weight)   — fraction of query tokens found in the product title
- *   - codigo_score  (full weight)   — same, applied to the product reference/code
+ *   - codigo_score  (full weight)   — applied only when the query contains a code/reference
  *   - desc_score    (0.75 weight)   — same, applied to the product description
  *
  * Token matching considers:
@@ -78,9 +78,9 @@ class RelevanceFilter
     /**
      * Returns a relevance score [0.0, 1.0] for a result array against the query tokens.
      *
-     * Scores each available field (nome, codigo, descricao) independently and
-     * returns the highest, so a code match or a description match can surface a
-     * result even when the title alone would not.
+     * Scores each available field independently and returns the highest, so a
+     * description match can surface a result even when the title alone would not.
+     * Product codes are scored only if the user searched a code/reference.
      *
      * @param  array{nome?: string, descricao?: string|null, codigo?: string|null} $resultado
      * @param  string[] $queryTokens
@@ -97,7 +97,7 @@ class RelevanceFilter
             $scores[] = self::pontuarTexto($resultado['nome'], $queryTokens);
         }
 
-        if (!empty($resultado['codigo'])) {
+        if (!empty($resultado['codigo']) && self::queryContemCodigo($queryTokens)) {
             $scores[] = self::pontuarTexto($resultado['codigo'], $queryTokens);
         }
 
@@ -106,6 +106,39 @@ class RelevanceFilter
         }
 
         return empty($scores) ? 0.0 : max($scores);
+    }
+
+    /**
+     * @param string[] $queryTokens
+     */
+    private static function queryContemCodigo(array $queryTokens): bool
+    {
+        foreach ($queryTokens as $token) {
+            if (self::pareceCodigoBuscado($token)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function pareceCodigoBuscado(string $token): bool
+    {
+        if (preg_match('/^\d+(?:[,.]\d+)?(?:mm|cm|m|kg|g|pol|polegadas?|v|w|hp|cv)$/', $token) === 1) {
+            return false;
+        }
+
+        if (str_contains($token, '/')) {
+            return false;
+        }
+
+        if (ctype_digit($token)) {
+            return strlen($token) >= 5;
+        }
+
+        return strlen($token) >= 4
+            && preg_match('/[a-z]/', $token) === 1
+            && preg_match('/\d/', $token) === 1;
     }
 
     /**

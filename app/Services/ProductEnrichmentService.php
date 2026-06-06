@@ -65,14 +65,25 @@ class ProductEnrichmentService
         'jogo de chave allen' => ['categoria' => 'ferramenta manual', 'tipo' => 'jogo de chaves allen'],
         'jogo de chaves' => ['categoria' => 'ferramenta manual', 'tipo' => 'jogo de chaves'],
         'chave canhao' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave canhao'],
+        'chave phillips' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave philips'],
         'chave philips' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave philips'],
         'chave combinada' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave combinada'],
         'chave de impacto' => ['categoria' => 'ferramenta eletrica', 'tipo' => 'chave de impacto'],
+        'chave para tubos' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave grifo'],
+        'chave para tubo' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave grifo'],
+        'chave tubo' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave grifo'],
+        'chave stilson' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave grifo'],
         'chave de fenda' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave fenda'],
         'chave grifo' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave grifo'],
         'chave griffo' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave grifo'],
+        'chave americana' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave grifo'],
+        'stilson' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave grifo'],
+        'grifo' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave grifo'],
         'chave fenda' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave fenda'],
         'chave inglesa' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave inglesa'],
+        'chave estrela' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave estrela'],
+        'chave fixa' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave fixa'],
+        'chave biela' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave biela'],
         'chave' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave'],
         'cabo t' => ['categoria' => 'ferramenta manual', 'tipo' => 'cabo t'],
         'martelo unha' => ['categoria' => 'ferramenta manual', 'tipo' => 'martelo unha'],
@@ -232,6 +243,16 @@ class ProductEnrichmentService
         }
 
         return self::valoresUnicosNaoVazios($termos);
+    }
+
+    /**
+     * Retorna apenas códigos/referências que vieram da busca do usuário.
+     *
+     * @return string[]
+     */
+    public static function extrairCodigosDaBusca(string $termo): array
+    {
+        return self::extrairCodigos($termo);
     }
 
     /**
@@ -644,6 +665,10 @@ class ProductEnrichmentService
 
         $buscaEhChave = str_starts_with($tipoBusca, 'chave ');
         $produtoEhChave = str_starts_with($tipoProduto, 'chave ');
+
+        if ($buscaEhChave && $tipoProduto === 'chave') {
+            return true;
+        }
 
         return $buscaEhChave && $produtoEhChave;
     }

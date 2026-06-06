@@ -138,6 +138,16 @@ class RelevanceFilterTest extends TestCase
         $this->assertEqualsWithDelta(1.0, $score, 0.01);
     }
 
+    public function test_codigo_do_produto_nao_pontua_se_usuario_nao_busca_codigo(): void
+    {
+        $score = RelevanceFilter::pontuar(
+            $this->produto(nome: 'Produto Genérico', codigo: 'VONDER-CHAVE-GRIFO-123456'),
+            ['chave', 'grifo', 'vonder'],
+        );
+
+        $this->assertEqualsWithDelta(0.0, $score, 0.01);
+    }
+
     public function test_codigo_nulo_nao_causa_erro(): void
     {
         $score = RelevanceFilter::pontuar(

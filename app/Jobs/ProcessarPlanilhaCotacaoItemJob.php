@@ -30,7 +30,7 @@ class ProcessarPlanilhaCotacaoItemJob implements ShouldQueue
         $item->update(['status' => 'processando']);
 
         try {
-            $resultados = $crawler->buscar($item->descricao);
+            $resultados = $crawler->buscar(trim((string) ($item->termo_busca ?: $item->descricao)));
             $resultados = array_values(array_filter(
                 $resultados,
                 fn (array $resultado): bool => (float) ($resultado['preco'] ?? 0) > 0,
@@ -48,6 +48,9 @@ class ProcessarPlanilhaCotacaoItemJob implements ShouldQueue
                     'imagem' => $resultado['imagem'] ?? null,
                     'marca_detectada' => $resultado['marca_detectada'] ?? null,
                     'score_produto' => $resultado['score_produto'] ?? null,
+                    'atributos_extraidos' => $resultado['atributos_extraidos'] ?? null,
+                    'codigo' => $resultado['codigo'] ?? null,
+                    'capturado_em' => now()->toIso8601String(),
                 ],
                 array_slice($resultados, 0, 20),
             );
@@ -55,8 +58,13 @@ class ProcessarPlanilhaCotacaoItemJob implements ShouldQueue
             $item->update([
                 'status' => ! empty($resultadosResumo) ? 'concluido' : 'sem_resultado',
                 'marca_cotada' => null,
+                'preco_loja' => null,
+                'preco_revalidado' => null,
                 'valor_unitario' => null,
                 'resultado_escolhido' => null,
+                'revalidacao_status' => null,
+                'revalidado_em' => null,
+                'revalidacao_mensagem' => null,
                 'resultados' => $resultadosResumo,
                 'erro_mensagem' => null,
             ]);

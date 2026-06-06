@@ -91,6 +91,12 @@ class ProductEnrichmentServiceTest extends TestCase
         ], $termos);
     }
 
+    public function test_extrair_codigos_da_busca_ignora_medidas_e_marcas(): void
+    {
+        $this->assertSame([], ProductEnrichmentService::extrairCodigosDaBusca('CHAVE GRIFO 18" (GEDORE/BELZER/ROBUST)'));
+        $this->assertSame(['41006106'], ProductEnrichmentService::extrairCodigosDaBusca('ALICATE CORTE 6" TRAMONTINA 41006106'));
+    }
+
     public function test_martelo_unha_tramontina_27mm_cabo_madeira(): void
     {
         $titulo = 'Martelo Unha Tramontina 27mm Cabo Madeira';
@@ -273,6 +279,35 @@ class ProductEnrichmentServiceTest extends TestCase
         $this->assertSame('Bosch', $produto['marca_detectada']);
         $this->assertSame('chave combinada', $produto['atributos_extraidos']['tipo']);
         $this->assertFalse($produto['correspondencia_fraca']);
+    }
+
+    public function test_chave_grifo_nao_casa_com_outros_tipos_de_chave(): void
+    {
+        $produtos = ProductEnrichmentService::enriquecerProdutos([
+            ['nome' => 'Chave Biela 7/16 3301521 Pol Red Gedore'],
+            ['nome' => 'Chave Phillips 3/8 X 6 Pol 036.350 Gedore'],
+            ['nome' => 'Chave Estrela Cr-V 18 x 19mm BELZER-301013B'],
+            ['nome' => 'Chave Fixa 1.1/8 x 1.1/4 Pol 004.563 Gedore'],
+        ], 'CHAVE GRIFO 18" GEDORE/BELZER/ROBUST');
+
+        foreach ($produtos as $produto) {
+            $this->assertSame(0.0, $produto['score_produto'], $produto['nome']);
+            $this->assertTrue($produto['correspondencia_fraca'], $produto['nome']);
+        }
+    }
+
+    public function test_chave_grifo_aceita_chave_tubo_ou_stilson(): void
+    {
+        $produtos = ProductEnrichmentService::enriquecerProdutos([
+            ['nome' => 'Chave Para Tubos Modelo Americano de 18 Pol. GEDORE RED-R27160016'],
+            ['nome' => 'Grifo / Chave Tubo Stilson 18" Gedore 225-18'],
+        ], 'CHAVE GRIFO 18" GEDORE/BELZER/ROBUST');
+
+        foreach ($produtos as $produto) {
+            $this->assertSame('chave grifo', $produto['atributos_extraidos']['tipo'], $produto['nome']);
+            $this->assertGreaterThanOrEqual(0.50, $produto['score_produto'], $produto['nome']);
+            $this->assertFalse($produto['correspondencia_fraca'], $produto['nome']);
+        }
     }
 
     public function test_filtrar_produtos_confiaveis_remove_correspondencias_fracas(): void

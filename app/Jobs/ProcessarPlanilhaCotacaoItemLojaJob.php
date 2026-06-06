@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\CrawlerExecucao;
 use App\Models\PlanilhaCotacaoItem;
 use App\Services\CrawlerService;
 use Illuminate\Bus\Batchable;
@@ -30,12 +31,16 @@ class ProcessarPlanilhaCotacaoItemLojaJob implements ShouldQueue
             return;
         }
 
+        $inicio = microtime(true);
         $item = PlanilhaCotacaoItem::findOrFail($this->itemId);
+        $termoBusca = $this->termoBusca($item);
         $resultadosResumo = [];
         $erro = null;
+        $lojaNome = null;
 
         try {
-            $resultados = $crawler->buscarEmLoja($item->descricao, $this->scraperIdentificador);
+            $lojaNome = $crawler->getScraper($this->scraperIdentificador)->nomeSite();
+            $resultados = $crawler->buscarEmLoja($termoBusca, $this->scraperIdentificador);
             $resultados = array_values(array_filter(
                 $resultados,
                 fn (array $resultado): bool => (float) ($resultado['preco'] ?? 0) > 0,
@@ -51,6 +56,9 @@ class ProcessarPlanilhaCotacaoItemLojaJob implements ShouldQueue
                     'imagem' => $resultado['imagem'] ?? null,
                     'marca_detectada' => $resultado['marca_detectada'] ?? null,
                     'score_produto' => $resultado['score_produto'] ?? null,
+                    'atributos_extraidos' => $resultado['atributos_extraidos'] ?? null,
+                    'codigo' => $resultado['codigo'] ?? null,
+                    'capturado_em' => now()->toIso8601String(),
                 ],
                 $resultados,
             );
@@ -58,15 +66,51 @@ class ProcessarPlanilhaCotacaoItemLojaJob implements ShouldQueue
             $erro = "{$this->scraperIdentificador}: {$e->getMessage()}";
         }
 
+        $this->registrarExecucaoCrawler(
+            $item,
+            $erro ? 'erro' : (! empty($resultadosResumo) ? 'ok' : 'sem_resultado'),
+            count($resultadosResumo),
+            $this->duracaoMs($inicio),
+            $erro,
+            $lojaNome,
+            $termoBusca,
+        );
+
+        $this->registrarConclusaoDaLoja($resultadosResumo, $erro);
+    }
+
+    public function failed(?\Throwable $exception): void
+    {
+        $erro = "{$this->scraperIdentificador}: ".($exception?->getMessage() ?? 'Falha ao processar a loja.');
+
+        $item = PlanilhaCotacaoItem::find($this->itemId);
+
+        if ($item) {
+            $this->registrarExecucaoCrawler($item, 'erro', 0, null, $erro, null);
+        }
+
+        $this->registrarConclusaoDaLoja([], $erro);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $resultadosResumo
+     */
+    private function registrarConclusaoDaLoja(array $resultadosResumo, ?string $erro): void
+    {
         DB::transaction(function () use ($resultadosResumo, $erro): void {
             $item = PlanilhaCotacaoItem::whereKey($this->itemId)->lockForUpdate()->firstOrFail();
+            $statusAnterior = $item->status;
+
+            if (in_array($statusAnterior, ['concluido', 'sem_resultado', 'erro'], true)) {
+                return;
+            }
 
             $resultados = array_merge($item->resultados ?? [], $resultadosResumo);
             $resultados = $this->resultadosUnicosOrdenados($resultados);
-            $lojasProcessadas = min(($item->lojas_processadas ?? 0) + 1, max((int) $item->lojas_total, 1));
+            $totalLojas = max((int) $item->lojas_total, 1);
+            $lojasProcessadas = min(($item->lojas_processadas ?? 0) + 1, $totalLojas);
             $erros = trim(implode("\n", array_filter([$item->erro_mensagem, $erro])));
-            $finalizouItem = $lojasProcessadas >= (int) $item->lojas_total;
-            $statusAnterior = $item->status;
+            $finalizouItem = $lojasProcessadas >= $totalLojas;
 
             $updates = [
                 'lojas_processadas' => $lojasProcessadas,
@@ -74,16 +118,49 @@ class ProcessarPlanilhaCotacaoItemLojaJob implements ShouldQueue
                 'erro_mensagem' => $erros !== '' ? $erros : null,
             ];
 
-            if ($finalizouItem && ! in_array($statusAnterior, ['concluido', 'sem_resultado', 'erro'], true)) {
+            if ($finalizouItem) {
                 $updates['status'] = ! empty($resultados) ? 'concluido' : 'sem_resultado';
             }
 
             $item->update($updates);
 
-            if ($finalizouItem && ! in_array($statusAnterior, ['concluido', 'sem_resultado', 'erro'], true)) {
+            if ($finalizouItem) {
                 $item->planilha()->increment('itens_processados');
             }
         });
+    }
+
+    private function registrarExecucaoCrawler(
+        PlanilhaCotacaoItem $item,
+        string $status,
+        int $resultadosCount,
+        ?int $duracaoMs,
+        ?string $erro,
+        ?string $lojaNome,
+        ?string $termoBusca = null,
+    ): void {
+        CrawlerExecucao::create([
+            'user_id' => $item->planilha?->user_id,
+            'planilha_cotacao_id' => $item->planilha_cotacao_id,
+            'planilha_cotacao_item_id' => $item->id,
+            'loja_id' => $this->scraperIdentificador,
+            'loja_nome' => $lojaNome,
+            'termo' => $termoBusca ?: $this->termoBusca($item),
+            'status' => $status,
+            'resultados_count' => $resultadosCount,
+            'duracao_ms' => $duracaoMs,
+            'erro_mensagem' => $erro,
+        ]);
+    }
+
+    private function duracaoMs(float $inicio): int
+    {
+        return max(0, (int) round((microtime(true) - $inicio) * 1000));
+    }
+
+    private function termoBusca(PlanilhaCotacaoItem $item): string
+    {
+        return trim((string) ($item->termo_busca ?: $item->descricao));
     }
 
     /**

@@ -30,7 +30,7 @@
     </x-app-header>
 
     <main class="max-w-6xl mx-auto px-4 py-6"
-          x-data="planilhaDetalhe(window.planilhaInicial)"
+          x-data="planilhaDetalhe()"
           x-init="init()">
 
         <section class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -47,12 +47,59 @@
                     <div class="h-full bg-emerald-500 transition-all" :style="`width: ${progresso()}%`"></div>
                 </div>
             </div>
-            <template x-if="finalizada() && downloadUrl">
-                <a :href="downloadUrl"
-                   class="inline-flex justify-center text-sm font-semibold px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors">
-                    Baixar planilha cotada
-                </a>
-            </template>
+            <div class="flex flex-col sm:flex-row gap-2">
+                <template x-if="finalizada()">
+                    <button type="button"
+                            @click="revalidarSelecionados()"
+                            :disabled="revalidando || !temSelecionados()"
+                            :class="revalidando || !temSelecionados()
+                                ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                                : 'bg-blue-600 hover:bg-blue-700 text-white'"
+                            class="inline-flex justify-center text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors">
+                        <span x-text="revalidando ? 'Revalidando...' : 'Revalidar selecionados'"></span>
+                    </button>
+                </template>
+                <template x-if="finalizada() && downloadUrl">
+                    <a :href="downloadUrl"
+                       :class="revalidando ? 'pointer-events-none bg-gray-300 text-gray-500' : 'bg-emerald-600 hover:bg-emerald-700 text-white'"
+                       class="inline-flex justify-center text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors">
+                        Baixar planilha cotada
+                    </a>
+                </template>
+            </div>
+        </section>
+
+        <template x-if="revalidacaoResumo">
+            <section class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mb-5 text-sm text-gray-700">
+                <span class="font-semibold text-gray-900">Revalidação:</span>
+                <span x-text="textoResumoRevalidacao()"></span>
+            </section>
+        </template>
+
+        <section class="bg-white rounded-2xl shadow-sm border border-gray-200 mb-5 overflow-hidden">
+            <button type="button"
+                    @click="legendaAberta = !legendaAberta"
+                    class="w-full px-4 py-3 flex items-center justify-between gap-3 text-left hover:bg-gray-50 transition-colors">
+                <div>
+                    <h2 class="text-sm font-semibold text-gray-900">Legenda das tags</h2>
+                    <p class="text-xs text-gray-500 mt-0.5">Cores indicam decisão, preço e confiança.</p>
+                </div>
+                <span class="text-xs font-semibold text-blue-700 whitespace-nowrap"
+                      x-text="legendaAberta ? 'Ocultar legenda' : 'Mostrar legenda'"></span>
+            </button>
+
+            <div x-show="legendaAberta" x-cloak class="border-y border-gray-100 bg-gray-50 px-4 py-3">
+                <div class="flex flex-wrap gap-x-4 gap-y-2">
+                    <template x-for="tag in legendaTags()" :key="tag.label">
+                        <div class="inline-flex items-center gap-1.5 min-w-0">
+                            <span class="shrink-0 text-[11px] px-2 py-0.5 rounded-full border font-bold"
+                                  :class="tag.classe"
+                                  x-text="tag.label"></span>
+                            <span class="text-xs text-gray-500" x-text="tag.descricao"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
         </section>
 
         <section class="space-y-3">
@@ -66,11 +113,53 @@
                                       :class="badgeClasse(item.status)"
                                       x-text="item.status"></span>
                             </div>
-                            <h2 class="font-semibold text-gray-900 mt-1" x-text="item.descricao"></h2>
+                            <div class="mt-1">
+                                <div x-show="!item.editando_busca" class="flex flex-col sm:flex-row sm:items-center gap-2">
+                                    <h2 class="font-semibold text-gray-900" x-text="termoBuscaExibicao(item)"></h2>
+                                    <button type="button"
+                                            @click="editarBusca(item)"
+                                            :disabled="!finalizada()"
+                                            class="inline-flex w-fit text-xs font-semibold px-2.5 py-1 rounded-lg border border-gray-200 text-blue-700 bg-white hover:bg-blue-50 disabled:text-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed">
+                                        Editar
+                                    </button>
+                                </div>
+                                <div x-show="item.editando_busca" x-cloak class="flex flex-col sm:flex-row sm:items-center gap-2">
+                                    <input type="text"
+                                           x-model="item.termo_busca_edicao"
+                                           :placeholder="item.descricao"
+                                           class="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <button type="button"
+                                            @click="refazerBusca(item)"
+                                            :disabled="!termoBuscaEdicaoValido(item)"
+                                            :class="!termoBuscaEdicaoValido(item)
+                                                ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                                                : 'bg-blue-600 hover:bg-blue-700 text-white'"
+                                            class="text-sm font-semibold px-4 py-2 rounded-lg transition-colors whitespace-nowrap">
+                                        Refazer busca
+                                    </button>
+                                    <button type="button"
+                                            @click="cancelarEdicaoBusca(item)"
+                                            class="text-sm font-semibold px-4 py-2 rounded-lg border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 transition-colors">
+                                        Cancelar
+                                    </button>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-1">
+                                    Título original da linha: <span x-text="item.descricao"></span>
+                                    <template x-if="item.termo_busca">
+                                        <span class="text-blue-600"> · busca ajustada apenas no sistema</span>
+                                    </template>
+                                </p>
+                            </div>
                             <div class="text-xs text-gray-500 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                                 <span>Selecionado: <span class="font-semibold" x-text="item.marca_cotada ? item.marca_cotada : 'nenhum'"></span></span>
-                                <span>· Valor unit.: <span class="font-semibold" x-text="formatarPreco(item.valor_unitario)"></span></span>
+                                <span>· Preço loja: <span class="font-semibold" x-text="formatarPreco(item.preco_loja)"></span></span>
+                                <span>· Valor planilha: <span class="font-semibold" x-text="formatarPreco(item.valor_unitario)"></span></span>
                                 <span>· Resultados: <span x-text="(item.resultados || []).length"></span></span>
+                                <template x-if="item.resultado_escolhido">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full border font-semibold"
+                                          :class="revalidacaoClasse(item.revalidacao_status)"
+                                          x-text="labelRevalidacao(item.revalidacao_status)"></span>
+                                </template>
                                 <template x-if="item.status === 'processando' && item.lojas_total">
                                     <span>· Lojas: <span x-text="item.lojas_processadas + '/' + item.lojas_total"></span></span>
                                 </template>
@@ -147,18 +236,25 @@
 
                                                     <td class="px-4 py-2">
                                                         <div class="flex items-start gap-1.5 flex-wrap">
-                                                            <template x-if="resultadoSelecionado(item, resultado)">
-                                                                <span class="shrink-0 bg-emerald-100 text-emerald-800 text-xs font-bold px-1.5 py-0.5 rounded-full border border-emerald-300">SELECIONADO</span>
-                                                            </template>
-                                                            <template x-if="!resultadoSelecionado(item, resultado) && index === 0">
-                                                                <span class="shrink-0 bg-green-100 text-green-800 text-xs font-bold px-1.5 py-0.5 rounded-full border border-green-300">MAIS BARATO</span>
-                                                            </template>
                                                             <span class="text-gray-900 font-medium leading-snug" x-text="resultado.nome"></span>
                                                         </div>
                                                         <p class="text-xs text-gray-500 mt-1">
                                                             <span x-text="resultado.marca_detectada || 'sem marca'"></span>
                                                             · score <span x-text="resultado.score_produto ?? '-'"></span>
                                                         </p>
+                                                        <div class="mt-2 flex flex-wrap gap-1.5">
+                                                            <template x-for="tag in tagsResultado(item, resultado, index)" :key="tag.label">
+                                                                <span class="text-[11px] px-2 py-0.5 rounded-full border font-bold"
+                                                                      :class="tag.classe"
+                                                                      x-text="tag.label"></span>
+                                                            </template>
+                                                        </div>
+                                                        <div class="mt-1 flex flex-wrap gap-1">
+                                                            <template x-for="evidencia in evidenciasResultado(resultado)" :key="evidencia">
+                                                                <span class="text-[11px] px-1.5 py-0.5 rounded border border-gray-200 bg-white text-gray-500"
+                                                                      x-text="evidencia"></span>
+                                                            </template>
+                                                        </div>
                                                     </td>
 
                                                     <td class="px-4 py-2">
@@ -207,168 +303,10 @@
         </section>
     </main>
 
-    <script>
-        const PLANILHA_SITE_NOMES = {
-            mercadolivre: 'Mercado Livre',
-            lojadomecanico: 'Loja do Mecânico',
-            anhanguera: 'Anhanguera Ferramentas',
-            antferramentas: 'ANT Ferramentas',
-            kennedy: 'Ferramentas Kennedy',
-            lfmaquinas: 'LF Máquinas',
-            martineli: 'Martineli Ferramentas',
-            mabore: 'Mabore Ferramentas',
-            fermaquinas: 'Fermáquinas',
-            casadofrentista: 'Casa do Frentista',
-            agrelimaquinas: 'Agreli Máquinas',
-            palaciodasferramentas: 'Palácio das Ferramentas',
-            brenfeer: 'Brenfeer',
-            tramontinaoficial: 'Tramontina Loja Oficial',
-            dimensional: 'Dimensional',
-            gravia: 'Gravia',
-            arcazul: 'Arcazul Ferramentas',
-            minasferramentas: 'Minas Ferramentas',
-        };
-
-        const PLANILHA_SITE_BADGE_CLASSES = {
-            mercadolivre: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-            lojadomecanico: 'bg-blue-100 text-blue-800 border-blue-300',
-            anhanguera: 'bg-orange-100 text-orange-800 border-orange-300',
-            antferramentas: 'bg-red-100 text-red-800 border-red-300',
-            kennedy: 'bg-purple-100 text-purple-800 border-purple-300',
-            lfmaquinas: 'bg-teal-100 text-teal-800 border-teal-300',
-            martineli: 'bg-green-100 text-green-800 border-green-300',
-            mabore: 'bg-pink-100 text-pink-800 border-pink-300',
-            fermaquinas: 'bg-indigo-100 text-indigo-800 border-indigo-300',
-            casadofrentista: 'bg-cyan-100 text-cyan-800 border-cyan-300',
-            agrelimaquinas: 'bg-lime-100 text-lime-800 border-lime-300',
-            palaciodasferramentas: 'bg-amber-100 text-amber-800 border-amber-300',
-            brenfeer: 'bg-rose-100 text-rose-800 border-rose-300',
-            tramontinaoficial: 'bg-sky-100 text-sky-800 border-sky-300',
-            dimensional: 'bg-slate-100 text-slate-800 border-slate-300',
-            gravia: 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-300',
-            arcazul: 'bg-blue-100 text-blue-800 border-blue-300',
-            minasferramentas: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-        };
-
-        window.planilhaInicial = @json($planilhaInicial);
-        axios.defaults.headers.common['X-CSRF-TOKEN'] = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
-        function planilhaDetalhe(inicial) {
-            return {
-                ...inicial,
-                timer: null,
-                init() {
-                    if (!['concluido', 'erro'].includes(this.status)) {
-                        this.timer = setInterval(() => this.atualizar(), 4000);
-                        this.atualizar();
-                    }
-                },
-                atualizar() {
-                    axios.get(this.statusUrl).then(({ data }) => {
-                        this.status = data.status;
-                        this.total = data.total_itens;
-                        this.processados = data.itens_processados;
-                        this.erro = data.erro_mensagem;
-                        this.downloadUrl = data.download_url;
-                        this.itens = data.itens.map(novo => {
-                            const atual = this.itens.find(i => i.id === novo.id);
-                            return { ...novo, aberto: atual ? atual.aberto : false };
-                        });
-
-                        if (['concluido', 'erro'].includes(this.status) && this.timer) {
-                            clearInterval(this.timer);
-                        }
-                    });
-                },
-                progresso() {
-                    return this.total > 0 ? Math.round((this.processados / this.total) * 100) : 0;
-                },
-                finalizada() {
-                    return this.status === 'concluido';
-                },
-                labelStatus() {
-                    const labels = {
-                        pendente: 'Pendente',
-                        processando: 'Processando',
-                        concluido: 'Concluida',
-                        erro: 'Erro',
-                    };
-                    return labels[this.status] || this.status;
-                },
-                badgeClasse(status) {
-                    return {
-                        pendente: 'bg-yellow-50 text-yellow-700 border border-yellow-200',
-                        processando: 'bg-blue-50 text-blue-700 border border-blue-200',
-                        concluido: 'bg-green-50 text-green-700 border border-green-200',
-                        sem_resultado: 'bg-gray-100 text-gray-600 border border-gray-200',
-                        erro: 'bg-red-50 text-red-700 border border-red-200',
-                    }[status] || 'bg-gray-100 text-gray-600 border border-gray-200';
-                },
-                selecionar(item, index) {
-                    if (!this.finalizada()) return;
-
-                    axios.post(item.selecionar_url, { resultado_index: index }).then(({ data }) => {
-                        this.downloadUrl = data.download_url;
-                        this.atualizarItens(data.itens, item.id);
-                    });
-                },
-                limpar(item) {
-                    if (!this.finalizada()) return;
-
-                    axios.delete(item.limpar_url).then(({ data }) => {
-                        this.downloadUrl = data.download_url;
-                        this.atualizarItens(data.itens, item.id);
-                    });
-                },
-                atualizarMargem(item) {
-                    if (!this.finalizada()) return;
-
-                    const margem = Number(item.margem_percentual || 0);
-
-                    axios.patch(item.margem_url, { margem_percentual: margem }).then(({ data }) => {
-                        this.downloadUrl = data.download_url;
-                        this.atualizarItens(data.itens, item.id);
-                    });
-                },
-                atualizarItens(novosItens, itemAbertoId = null) {
-                    this.itens = novosItens.map(novo => {
-                        const atual = this.itens.find(i => i.id === novo.id);
-                        return { ...novo, aberto: atual ? atual.aberto || atual.id === itemAbertoId : false };
-                    });
-                },
-                resultadoSelecionado(item, resultado) {
-                    return item.resultado_escolhido
-                        && item.resultado_escolhido.url === resultado.url
-                        && item.resultado_escolhido.nome === resultado.nome;
-                },
-                resultadosOrdenados(item) {
-                    return (item.resultados || [])
-                        .map((resultado, index) => ({ ...resultado, __index: index }))
-                        .sort((a, b) => {
-                            const precoA = a.preco === null || a.preco === undefined ? Infinity : Number(a.preco);
-                            const precoB = b.preco === null || b.preco === undefined ? Infinity : Number(b.preco);
-                            return precoA - precoB;
-                        });
-                },
-                resultadoKey(resultado) {
-                    return `${resultado.__index}-${resultado.url || ''}-${resultado.nome || ''}`;
-                },
-                siteNome(resultado) {
-                    return resultado.nome_site || PLANILHA_SITE_NOMES[resultado.site] || resultado.site || 'Loja';
-                },
-                siteBadgeClass(site) {
-                    return PLANILHA_SITE_BADGE_CLASSES[site] || 'bg-gray-100 text-gray-700 border-gray-300';
-                },
-                precoComMargem(preco, margemPercentual) {
-                    if (preco === null || preco === undefined || preco === '') return null;
-                    return Number(preco) * (1 + (Number(margemPercentual || 0) / 100));
-                },
-                formatarPreco(valor) {
-                    if (valor === null || valor === undefined || valor === '') return 'sem preço';
-                    return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                }
-            }
-        }
-    </script>
+    <script type="application/json" id="planilha-inicial">@json($planilhaInicial)</script>
+    <script src="{{ asset('js/planilhas/constants.js') }}?v={{ filemtime(public_path('js/planilhas/constants.js')) }}"></script>
+    <script src="{{ asset('js/planilhas/formatters.js') }}?v={{ filemtime(public_path('js/planilhas/formatters.js')) }}"></script>
+    <script src="{{ asset('js/planilhas/tags.js') }}?v={{ filemtime(public_path('js/planilhas/tags.js')) }}"></script>
+    <script src="{{ asset('js/planilhas/show-controller.js') }}?v={{ filemtime(public_path('js/planilhas/show-controller.js')) }}"></script>
 </body>
 </html>

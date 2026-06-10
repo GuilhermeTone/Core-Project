@@ -58,6 +58,7 @@ class ProcessarPlanilhaCotacaoItemLojaJob implements ShouldQueue
                     'score_produto' => $resultado['score_produto'] ?? null,
                     'atributos_extraidos' => $resultado['atributos_extraidos'] ?? null,
                     'codigo' => $resultado['codigo'] ?? null,
+                    'disponivel' => $resultado['disponivel'] ?? true,
                     'capturado_em' => now()->toIso8601String(),
                 ],
                 $resultados,

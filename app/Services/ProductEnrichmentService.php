@@ -6,7 +6,7 @@ use App\Services\Scrapers\QueryNormalizer;
 
 class ProductEnrichmentService
 {
-    private const LIMITE_CORRESPONDENCIA_FRACA = 0.50;
+    private const LIMITE_CORRESPONDENCIA_FRACA = 0.65;
 
     /** @var string[] */
     private const MARCAS = [

@@ -78,6 +78,7 @@ class MaboreScraper extends BaseScraper
                     'url'       => $href,
                     'imagem'    => $imagem,
                     'codigo'    => null,
+                    'disponivel' => $this->disponibilidadePorNode($node),
                 ];
             });
         } catch (\Exception $e) {

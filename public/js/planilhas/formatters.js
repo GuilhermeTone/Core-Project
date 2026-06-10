@@ -16,9 +16,12 @@
             .replace(/\bpol\b/g, 'in')
             .replace(/\bpolegada(s)?\b/g, 'in')
             .replace(/\s+/g, ' ');
-        const matches = normalizado.match(/\b\d+(?:[,.]\d+)?(?:\/\d+)?\s?(?:mm|cm|m|in|kg|g|l|ml)\b/g) || [];
+        const medidasSimples = normalizado.match(/\b\d+(?:[,.]\d+)?(?:\/\d+)?\s?(?:mm|cm|m|in|kg|g|l|ml)\b/g) || [];
+        const medidasCompostas = normalizado.match(/\b(?:\d+\s+)?\d+\/\d+\s*x\s*\d+(?:[,.]\d+)?\b/g) || [];
 
-        return matches.map(medida => medida.replace(/\s+/g, '').replace(',', '.'));
+        return [...new Set([...medidasSimples, ...medidasCompostas]
+            .map(medida => medida.replace(/\s+/g, '').replace(',', '.'))
+        )];
     }
 
     function formatarDataCurta(valor) {
@@ -52,11 +55,20 @@
         return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
+    function formatarScore(valor) {
+        if (valor === null || valor === undefined || valor === '') {
+            return 'sem confiança';
+        }
+
+        return `${Math.round(Number(valor) * 100)}%`;
+    }
+
     window.PlanilhaCotacao.formatters = {
         normalizarTexto,
         medidasNoTexto,
         formatarDataCurta,
         precoComMargem,
         formatarPreco,
+        formatarScore,
     };
 })();

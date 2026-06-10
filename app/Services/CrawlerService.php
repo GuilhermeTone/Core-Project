@@ -128,6 +128,10 @@ class CrawlerService
         }
 
         $resultados = ProductEnrichmentService::enriquecerProdutos($this->removerDuplicados($resultadosBrutos), $termo);
+        $resultados = array_values(array_filter(
+            $resultados,
+            fn (array $item): bool => ($item['disponivel'] ?? true) !== false,
+        ));
         $resultados = ProductEnrichmentService::filtrarProdutosConfiaveis($resultados);
 
         return array_map(

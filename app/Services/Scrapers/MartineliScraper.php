@@ -104,6 +104,7 @@ class MartineliScraper extends BaseScraper
                         'url'       => $href,
                         'imagem'    => $imagem,
                         'codigo'    => null,
+                        'disponivel' => $this->disponibilidadePorNode($node),
                     ];
                 });
 

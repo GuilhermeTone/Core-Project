@@ -89,6 +89,10 @@
             </button>
 
             <div x-show="legendaAberta" x-cloak class="border-y border-gray-100 bg-gray-50 px-4 py-3">
+                <div class="mb-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-900">
+                    <strong>Confiança</strong> indica o quanto o sistema acredita que o resultado corresponde ao item buscado.
+                    Ela compara descricao, tipo do produto, marca, medidas e codigo apenas quando o usuario pesquisou um codigo.
+                </div>
                 <div class="flex flex-wrap gap-x-4 gap-y-2">
                     <template x-for="tag in legendaTags()" :key="tag.label">
                         <div class="inline-flex items-center gap-1.5 min-w-0">
@@ -238,10 +242,12 @@
                                                         <div class="flex items-start gap-1.5 flex-wrap">
                                                             <span class="text-gray-900 font-medium leading-snug" x-text="resultado.nome"></span>
                                                         </div>
-                                                        <p class="text-xs text-gray-500 mt-1">
-                                                            <span x-text="resultado.marca_detectada || 'sem marca'"></span>
-                                                            · score <span x-text="resultado.score_produto ?? '-'"></span>
-                                                        </p>
+                                                        <div class="mt-1 flex flex-wrap items-center gap-1 text-xs text-gray-500">
+                                                            <span class="text-gray-500" x-text="resultado.marca_detectada || 'sem marca'"></span>
+                                                            <span class="text-gray-300">·</span>
+                                                            <span class="font-bold text-gray-700"
+                                                                  x-text="'Confiança ' + formatarScore(resultado.score_produto)"></span>
+                                                        </div>
                                                         <div class="mt-2 flex flex-wrap gap-1.5">
                                                             <template x-for="tag in tagsResultado(item, resultado, index)" :key="tag.label">
                                                                 <span class="text-[11px] px-2 py-0.5 rounded-full border font-bold"

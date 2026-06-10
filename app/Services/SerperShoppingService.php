@@ -7,7 +7,7 @@ use RuntimeException;
 
 class SerperShoppingService
 {
-    private const SCORE_MINIMO = 0.70;
+    private const SCORE_MINIMO = 0.65;
 
     private Client $client;
 
@@ -61,7 +61,10 @@ class SerperShoppingService
 
         $resultados = array_values(array_filter(
             $resultados,
-            fn (array $item): bool => ! empty($item['nome']) && ! empty($item['url']) && (float) ($item['preco'] ?? 0) > 0,
+            fn (array $item): bool => ! empty($item['nome'])
+                && ! empty($item['url'])
+                && (float) ($item['preco'] ?? 0) > 0
+                && ($item['disponivel'] ?? true) !== false,
         ));
 
         $relevance = new SerperRelevanceService;
@@ -98,7 +101,31 @@ class SerperShoppingService
             'url' => (string) ($item['link'] ?? $item['productLink'] ?? ''),
             'imagem' => $item['imageUrl'] ?? $item['thumbnail'] ?? null,
             'codigo' => null,
+            'disponivel' => $this->disponivel($item),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    private function disponivel(array $item): bool
+    {
+        foreach (['availability', 'available', 'inStock', 'stock'] as $campo) {
+            if (! array_key_exists($campo, $item)) {
+                continue;
+            }
+
+            $valor = mb_strtolower((string) $item[$campo], 'UTF-8');
+
+            if (str_contains($valor, 'out of stock')
+                || str_contains($valor, 'fora de estoque')
+                || str_contains($valor, 'sem estoque')
+                || str_contains($valor, 'indispon')) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function parsePreco(mixed $preco): ?float

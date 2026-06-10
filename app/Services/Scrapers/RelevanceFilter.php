@@ -21,7 +21,7 @@ namespace App\Services\Scrapers;
 class RelevanceFilter
 {
     /** Minimum score for a result to be included. */
-    private const THRESHOLD = 0.5;
+    private const THRESHOLD = 0.65;
 
     /** Weight applied to description scores (lower than title/code to avoid noise). */
     private const DESC_WEIGHT = 0.75;

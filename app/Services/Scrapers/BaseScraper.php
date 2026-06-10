@@ -38,6 +38,7 @@ abstract class BaseScraper implements ScraperInterface
     {
         $termoLimpo = QueryNormalizer::limpar($termo);
         $resultados = $this->executarBusca($termoLimpo);
+        $resultados = $this->filtrarDisponiveis($resultados);
 
         return RelevanceFilter::filtrar($resultados, $termoLimpo);
     }
@@ -46,7 +47,7 @@ abstract class BaseScraper implements ScraperInterface
      * Performs the actual site-specific search and returns raw results.
      * Subclasses implement this instead of buscar().
      *
-     * @return array<array{nome: string, descricao: string|null, preco: float|null, url: string, imagem: string|null}>
+     * @return array<array{nome: string, descricao: string|null, preco: float|null, url: string, imagem: string|null, disponivel?: bool}>
      */
     abstract protected function executarBusca(string $termo): array;
 
@@ -92,9 +93,13 @@ abstract class BaseScraper implements ScraperInterface
             $imagem = null;
             $item   = $product['items'][0] ?? null;
 
+            $disponivel = true;
+
             if ($item) {
-                $preco  = $this->precoPrincipalVtex($item['sellers'][0]['commertialOffer'] ?? []);
+                $offer = $item['sellers'][0]['commertialOffer'] ?? [];
+                $preco  = $this->precoPrincipalVtex($offer);
                 $imagem = $item['images'][0]['imageUrl'] ?? null;
+                $disponivel = $this->disponibilidadePorCampos($offer) ?? true;
             }
 
             $descricao = null;
@@ -109,10 +114,105 @@ abstract class BaseScraper implements ScraperInterface
                 'url'       => $link,
                 'imagem'    => $imagem,
                 'codigo'    => $product['productReference'] ?? null,
+                'disponivel' => $disponivel,
             ];
         }
 
         return $resultados;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $resultados
+     * @return array<int, array<string, mixed>>
+     */
+    protected function filtrarDisponiveis(array $resultados): array
+    {
+        return array_values(array_filter(
+            $resultados,
+            fn (array $produto): bool => $this->produtoDisponivel($produto),
+        ));
+    }
+
+    /**
+     * @param  array<string, mixed>  $produto
+     */
+    protected function produtoDisponivel(array $produto): bool
+    {
+        if (array_key_exists('disponivel', $produto)) {
+            return $this->disponibilidadePorCampos(['disponivel' => $produto['disponivel']]) ?? true;
+        }
+
+        return true;
+    }
+
+    /**
+     * @param  array<string, mixed>  $dados
+     */
+    protected function disponibilidadePorCampos(array $dados): ?bool
+    {
+        foreach (['IsAvailable', 'isAvailable', 'available', 'disponivel', 'em_estoque', 'in_stock', 'has_stock'] as $campo) {
+            if (array_key_exists($campo, $dados)) {
+                return $this->valorBooleanoDisponibilidade($dados[$campo]);
+            }
+        }
+
+        foreach (['AvailableQuantity', 'available_quantity', 'quantity', 'quantidade', 'stock', 'estoque'] as $campo) {
+            if (! array_key_exists($campo, $dados)) {
+                continue;
+            }
+
+            if (is_numeric($dados[$campo])) {
+                return (float) $dados[$campo] > 0;
+            }
+        }
+
+        return null;
+    }
+
+    protected function disponibilidadePorTexto(?string $texto): bool
+    {
+        return ! $this->textoIndicaIndisponivel($texto);
+    }
+
+    protected function disponibilidadePorNode(Crawler $node): bool
+    {
+        return $this->disponibilidadePorTexto($this->textoCompleto($node));
+    }
+
+    protected function textoCompleto(Crawler $node): string
+    {
+        try {
+            return trim($node->text('', true));
+        } catch (\Exception $e) {
+            return '';
+        }
+    }
+
+    protected function textoIndicaIndisponivel(?string $texto): bool
+    {
+        $normalizado = QueryNormalizer::removerAcentos(mb_strtolower((string) $texto, 'UTF-8'));
+        $normalizado = preg_replace('/\s+/', ' ', $normalizado) ?? '';
+
+        return preg_match('/\b(fora de estoque|sem estoque|produto sem estoque|produto indisponivel|indisponivel|esgotad[oa]|avise[-\s]?me|avise me quando chegar|notifique[-\s]?me|notify me)\b/u', $normalizado) === 1;
+    }
+
+    private function valorBooleanoDisponibilidade(mixed $valor): bool
+    {
+        if (is_bool($valor)) {
+            return $valor;
+        }
+
+        if (is_numeric($valor)) {
+            return (float) $valor > 0;
+        }
+
+        $normalizado = QueryNormalizer::removerAcentos(mb_strtolower(trim((string) $valor), 'UTF-8'));
+
+        if (in_array($normalizado, ['false', 'nao', 'n', '0', 'indisponivel', 'fora de estoque', 'sem estoque', 'esgotado'], true)) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -240,6 +340,7 @@ abstract class BaseScraper implements ScraperInterface
                 }
 
                 $codigo = $this->textoPrimeiro($node, ['.produto-sku']);
+                $disponivel = $this->disponibilidadePorNode($node);
 
                 $resultados[] = [
                     'nome'      => $nome,
@@ -249,6 +350,7 @@ abstract class BaseScraper implements ScraperInterface
                     'imagem'    => $this->atributoPrimeiro($node, ['.imagem-produto img', 'img'], 'src')
                         ?? $this->atributoPrimeiro($node, ['.imagem-produto img', 'img'], 'data-src'),
                     'codigo'    => $codigo,
+                    'disponivel' => $disponivel,
                 ];
             });
         } catch (\Exception $e) {

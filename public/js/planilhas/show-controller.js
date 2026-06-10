@@ -279,6 +279,10 @@
 
             formatarPreco(valor) {
                 return formatters.formatarPreco(valor);
+            },
+
+            formatarScore(valor) {
+                return formatters.formatarScore(valor);
             }
         };
     }

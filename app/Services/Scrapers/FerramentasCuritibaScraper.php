@@ -46,6 +46,7 @@ class FerramentasCuritibaScraper extends BaseScraper
                 'url'       => $url,
                 'imagem'    => null,
                 'codigo'    => $item['sku'] ?? ($item['id'] ?? null),
+                'disponivel' => $this->disponibilidadePorCampos($item) ?? $this->disponibilidadePorTexto(json_encode($item, JSON_UNESCAPED_UNICODE)),
             ];
         }
 

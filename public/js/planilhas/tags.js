@@ -16,6 +16,7 @@
             selecionado: 'bg-emerald-100 text-emerald-800 border-emerald-300',
             preco: 'bg-green-100 text-green-800 border-green-300',
             confianca: 'bg-teal-100 text-teal-800 border-teal-300',
+            boaConfianca: 'bg-emerald-50 text-emerald-700 border-emerald-200',
             conferir: 'bg-amber-100 text-amber-800 border-amber-300',
             marca: 'bg-blue-100 text-blue-800 border-blue-300',
             medida: 'bg-cyan-100 text-cyan-800 border-cyan-300',
@@ -35,6 +36,7 @@
             { label: 'Melhor opção', tipo: 'melhor', descricao: 'Menor preço + alta confiança.' },
             { label: 'Menor preço', tipo: 'preco', descricao: 'Mais barato com preço válido.' },
             { label: 'Alta confiança', tipo: 'confianca', descricao: 'Bate bem com a busca.' },
+            { label: 'Boa confiança', tipo: 'boaConfianca', descricao: 'Passou no corte mínimo.' },
             { label: 'Conferir', tipo: 'conferir', descricao: 'Precisa revisão.' },
             { label: 'Marca correta', tipo: 'marca', descricao: 'Marca bate com a busca.' },
             { label: 'Medida correta', tipo: 'medida', descricao: 'Medida bate com a planilha.' },
@@ -53,8 +55,9 @@
         const menorPreco = index === 0 && temPreco;
         const selecionado = resultadoSelecionado(item, resultado);
         const altaConfianca = score >= 0.85;
-        const compativel = score >= 0.70;
-        const revisar = score > 0 && score < 0.70;
+        const boaConfianca = score >= 0.80;
+        const compativel = score >= 0.65;
+        const revisar = score > 0 && score < 0.80;
 
         if (selecionado) {
             tags.push(tag('Selecionado', 'selecionado'));
@@ -68,6 +71,8 @@
 
         if (altaConfianca) {
             tags.push(tag('Alta confiança', 'confianca'));
+        } else if (boaConfianca) {
+            tags.push(tag('Boa confiança', 'boaConfianca'));
         } else if (revisar || !compativel) {
             tags.push(tag('Conferir', 'conferir'));
         }

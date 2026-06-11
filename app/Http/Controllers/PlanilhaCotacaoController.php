@@ -92,6 +92,43 @@ class PlanilhaCotacaoController extends Controller
         return view('planilhas.show', compact('planilha', 'planilhaInicial'));
     }
 
+    public function cotacaoFechada(PlanilhaCotacao $planilha)
+    {
+        abort_if($planilha->user_id !== auth()->id(), 403);
+
+        $planilha->load('itens');
+
+        $itens = $planilha->itens;
+        $selecionados = $itens
+            ->filter(fn (PlanilhaCotacaoItem $item): bool => ! empty($item->resultado_escolhido))
+            ->map(fn (PlanilhaCotacaoItem $item): array => $this->mapearItemFechado($item))
+            ->values();
+
+        $lojas = $selecionados
+            ->groupBy('loja_nome')
+            ->map(function ($itensLoja, string $lojaNome): array {
+                return [
+                    'nome' => $lojaNome,
+                    'itens' => $itensLoja->values(),
+                    'quantidade_itens' => $itensLoja->count(),
+                    'subtotal_compra' => round($itensLoja->sum('total_compra'), 2),
+                    'subtotal_planilha' => round($itensLoja->sum('total_planilha'), 2),
+                ];
+            })
+            ->sortBy('nome')
+            ->values();
+
+        $resumo = [
+            'total_itens' => $itens->count(),
+            'selecionados' => $selecionados->count(),
+            'lojas' => $lojas->count(),
+            'total_compra' => round($selecionados->sum('total_compra'), 2),
+            'total_planilha' => round($selecionados->sum('total_planilha'), 2),
+        ];
+
+        return view('planilhas.cotacao-fechada', compact('planilha', 'lojas', 'resumo'));
+    }
+
     public function status(PlanilhaCotacao $planilha)
     {
         abort_if($planilha->user_id !== auth()->id(), 403);
@@ -391,6 +428,36 @@ class PlanilhaCotacaoController extends Controller
             'refazer_busca_url' => route('planilhas.itens.refazer-busca', [$item->planilha_cotacao_id, $item->id]),
             'revalidar_url' => route('planilhas.revalidar', $item->planilha_cotacao_id),
             'aberto' => false,
+        ];
+    }
+
+    private function mapearItemFechado(PlanilhaCotacaoItem $item): array
+    {
+        $resultado = $item->resultado_escolhido ?? [];
+        $quantidade = max(1.0, (float) ($item->quantidade ?? 1));
+        $precoCompra = $item->preco_revalidado ?? $item->preco_loja ?? ($resultado['preco'] ?? null);
+        $valorPlanilha = $item->valor_unitario ?? $precoCompra;
+        $lojaNome = $resultado['nome_site'] ?? $resultado['site'] ?? 'Loja sem nome';
+
+        return [
+            'linha' => $item->linha,
+            'descricao' => $item->descricao,
+            'quantidade' => $quantidade,
+            'unidade' => $item->unidade,
+            'produto' => $resultado['nome'] ?? 'Produto selecionado',
+            'loja_nome' => $lojaNome,
+            'site' => $resultado['site'] ?? null,
+            'marca' => $item->marca_cotada ?? $resultado['marca_detectada'] ?? null,
+            'preco_compra' => $precoCompra !== null ? (float) $precoCompra : null,
+            'valor_planilha' => $valorPlanilha !== null ? (float) $valorPlanilha : null,
+            'total_compra' => $precoCompra !== null ? round((float) $precoCompra * $quantidade, 2) : 0.0,
+            'total_planilha' => $valorPlanilha !== null ? round((float) $valorPlanilha * $quantidade, 2) : 0.0,
+            'margem_percentual' => (float) ($item->margem_percentual ?? 0),
+            'url' => $resultado['url'] ?? null,
+            'imagem' => $resultado['imagem'] ?? null,
+            'revalidacao_status' => $item->revalidacao_status,
+            'revalidacao_mensagem' => $item->revalidacao_mensagem,
+            'revalidado_em' => $item->revalidado_em,
         ];
     }
 

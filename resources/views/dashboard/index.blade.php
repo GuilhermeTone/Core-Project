@@ -12,7 +12,7 @@
             <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-600 text-white text-sm font-bold shrink-0">DB</div>
             <div>
                 <h1 class="text-xl font-bold text-gray-900">Dashboard</h1>
-                <p class="text-xs text-gray-500 hidden sm:block">Acompanhe planilhas, seleções e pontos de atenção</p>
+                <p class="text-xs text-gray-500 hidden sm:block">Acompanhe planilhas, processamento e resultados</p>
             </div>
         </x-slot:slot>
         <x-slot:actions>
@@ -36,14 +36,14 @@
                 <p class="text-xs text-gray-500 mt-1">{{ $stats['planilhas_concluidas'] }} concluída(s)</p>
             </div>
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Pendentes de seleção</p>
-                <p class="text-3xl font-bold text-amber-700 mt-2">{{ $stats['itens_pendentes_selecao'] }}</p>
-                <p class="text-xs text-gray-500 mt-1">{{ $stats['itens_selecionados'] }} selecionado(s)</p>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Itens com resultado</p>
+                <p class="text-3xl font-bold text-emerald-700 mt-2">{{ $stats['itens_com_resultado'] }}</p>
+                <p class="text-xs text-gray-500 mt-1">{{ $stats['taxa_com_resultado'] }}% dos itens importados</p>
             </div>
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Sem resultado</p>
                 <p class="text-3xl font-bold text-gray-900 mt-2">{{ $stats['itens_sem_resultado'] }}</p>
-                <p class="text-xs text-gray-500 mt-1">{{ $stats['taxa_selecao'] }}% dos itens selecionados</p>
+                <p class="text-xs text-gray-500 mt-1">Sem produto encontrado</p>
             </div>
         </section>
 
@@ -61,10 +61,6 @@
                             {{ $stats['tempo_medio_processamento'] !== null ? number_format($stats['tempo_medio_processamento'], 1, ',', '.') . ' min' : 'sem dados' }}
                         </dd>
                     </div>
-                    <div class="flex items-center justify-between gap-4">
-                        <dt class="text-gray-500">Oportunidade nos selecionados</dt>
-                        <dd class="font-semibold text-emerald-700">R$ {{ number_format($stats['economia_potencial'], 2, ',', '.') }}</dd>
-                    </div>
                 </dl>
             </div>
 
@@ -73,8 +69,8 @@
                     <h2 class="font-semibold text-gray-900">Status dos itens</h2>
                     <span class="text-xs text-gray-500">{{ $stats['itens_total'] }} item(ns)</span>
                 </div>
-                <div class="mt-4 grid grid-cols-2 md:grid-cols-5 gap-2">
-                    @foreach (['pendente' => 'Pendente', 'processando' => 'Processando', 'concluido' => 'Concluído', 'sem_resultado' => 'Sem resultado', 'erro' => 'Erro'] as $status => $label)
+                <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
+                    @foreach (['pendente' => 'Pendente', 'processando' => 'Processando', 'concluido' => 'Concluído', 'sem_resultado' => 'Sem resultado'] as $status => $label)
                         @php($totalStatus = (int) ($statusItens[$status] ?? 0))
                         <div class="border border-gray-200 rounded-lg p-3 bg-gray-50">
                             <p class="text-xs text-gray-500">{{ $label }}</p>
@@ -85,7 +81,7 @@
             </div>
         </section>
 
-        <section class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <section>
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                     <h2 class="font-semibold text-gray-900">Planilhas recentes</h2>
@@ -111,61 +107,6 @@
                         <p class="px-5 py-8 text-sm text-gray-500">Nenhuma planilha importada ainda.</p>
                     @endforelse
                 </div>
-            </div>
-
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="px-5 py-4 border-b border-gray-100">
-                    <h2 class="font-semibold text-gray-900">Itens que precisam de atenção</h2>
-                </div>
-                <div class="divide-y divide-gray-100">
-                    @forelse ($itensAtencao as $item)
-                        <a href="{{ route('planilhas.show', $item->planilha) }}" class="block px-5 py-4 hover:bg-gray-50">
-                            <p class="font-semibold text-gray-900 line-clamp-1">{{ $item->descricao }}</p>
-                            <p class="text-xs text-gray-500 mt-1">
-                                {{ $item->planilha->nome ?? $item->planilha->nome_arquivo }} · linha {{ $item->linha }} ·
-                                {{ $item->revalidacao_status ?: $item->status }}
-                            </p>
-                        </a>
-                    @empty
-                        <p class="px-5 py-8 text-sm text-gray-500">Nenhum item crítico agora.</p>
-                    @endforelse
-                </div>
-            </div>
-        </section>
-
-        <section class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="px-5 py-4 border-b border-gray-100">
-                <h2 class="font-semibold text-gray-900">Lojas nas suas planilhas recentes</h2>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
-                            <th class="px-5 py-3 text-left">Loja</th>
-                            <th class="px-5 py-3 text-right">Execuções</th>
-                            <th class="px-5 py-3 text-right">Resultados</th>
-                            <th class="px-5 py-3 text-right">Sem resultado</th>
-                            <th class="px-5 py-3 text-right">Erros</th>
-                            <th class="px-5 py-3 text-right">Tempo médio</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        @forelse ($lojas as $loja)
-                            <tr>
-                                <td class="px-5 py-3 font-semibold text-gray-900">{{ $loja->loja_nome ?: $loja->loja_id }}</td>
-                                <td class="px-5 py-3 text-right text-gray-700">{{ $loja->total }}</td>
-                                <td class="px-5 py-3 text-right text-emerald-700 font-semibold">{{ $loja->ok_total }}</td>
-                                <td class="px-5 py-3 text-right text-gray-700">{{ $loja->sem_resultado_total }}</td>
-                                <td class="px-5 py-3 text-right text-red-700 font-semibold">{{ $loja->erros_total }}</td>
-                                <td class="px-5 py-3 text-right text-gray-700">{{ $loja->duracao_media_ms ? number_format($loja->duracao_media_ms / 1000, 1, ',', '.') . 's' : '-' }}</td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="6" class="px-5 py-8 text-center text-sm text-gray-500">Sem execuções de lojas nos últimos 7 dias.</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
             </div>
         </section>
     </main>

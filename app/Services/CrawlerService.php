@@ -27,8 +27,10 @@ class CrawlerService
     /** @var ScraperInterface[] */
     private array $scrapers;
 
-    public function __construct()
-    {
+    public function __construct(
+        private readonly ?EcommerceAiNormalizerService $aiNormalizer = null,
+        private readonly ?MeilisearchProductSearchService $productSearch = null,
+    ) {
         $this->scrapers = [
             'lojadomecanico' => new LojaMecanicoScraper,
             'anhanguera' => new AnhangueraScraper,
@@ -46,7 +48,7 @@ class CrawlerService
             'dimensional' => new DimensionalScraper,
             'gravia' => new GraviaScraper,
             'arcazul' => new ArcazulFerramentasScraper,
-            'minasferramentas' => new MinasFerramentasScraper
+            'minasferramentas' => new MinasFerramentasScraper,
         ];
     }
 
@@ -122,17 +124,25 @@ class CrawlerService
     {
         $scraper = $this->getScraper($identificador);
         $resultadosBrutos = [];
+        $normalizacao = $this->normalizador()->normalizarBusca($termo);
+        $termoNormalizado = $normalizacao['normalizado'] ?: $termo;
+        $termosBusca = ! empty($normalizacao['termos_busca'])
+            ? $normalizacao['termos_busca']
+            : [$termoNormalizado];
 
-        foreach (ProductEnrichmentService::termosBuscaPorMarca($termo) as $termoBusca) {
-            $resultadosBrutos = array_merge($resultadosBrutos, $scraper->buscar($termoBusca));
+        foreach ($termosBusca as $termoBusca) {
+            foreach (ProductEnrichmentService::termosBuscaPorMarca($termoBusca) as $termoPorMarca) {
+                $resultadosBrutos = array_merge($resultadosBrutos, $scraper->buscar($termoPorMarca));
+            }
         }
 
-        $resultados = ProductEnrichmentService::enriquecerProdutos($this->removerDuplicados($resultadosBrutos), $termo);
+        $resultados = $this->removerDuplicados($resultadosBrutos);
+        $resultados = ProductEnrichmentService::enriquecerProdutos($resultados);
+        $resultados = $this->buscadorProdutos()->filtrarERanquear($termo, $termoNormalizado, $resultados);
         $resultados = array_values(array_filter(
             $resultados,
             fn (array $item): bool => ($item['disponivel'] ?? true) !== false,
         ));
-        $resultados = ProductEnrichmentService::filtrarProdutosConfiaveis($resultados);
 
         return array_map(
             fn (array $item): array => array_merge($item, ['site' => $scraper->identificador()]),
@@ -167,5 +177,15 @@ class CrawlerService
         }
 
         return $unicos;
+    }
+
+    private function normalizador(): EcommerceAiNormalizerService
+    {
+        return $this->aiNormalizer ?? app(EcommerceAiNormalizerService::class);
+    }
+
+    private function buscadorProdutos(): MeilisearchProductSearchService
+    {
+        return $this->productSearch ?? app(MeilisearchProductSearchService::class);
     }
 }

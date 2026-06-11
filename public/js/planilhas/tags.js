@@ -33,11 +33,11 @@
 
     function legendaTags() {
         return [
-            { label: 'Melhor opção', tipo: 'melhor', descricao: 'Menor preço + alta confiança.' },
-            { label: 'Menor preço', tipo: 'preco', descricao: 'Mais barato com preço válido.' },
-            { label: 'Alta confiança', tipo: 'confianca', descricao: 'Bate bem com a busca.' },
-            { label: 'Boa confiança', tipo: 'boaConfianca', descricao: 'Passou no corte mínimo.' },
-            { label: 'Conferir', tipo: 'conferir', descricao: 'Precisa revisão.' },
+            { label: 'Melhor opção', tipo: 'melhor', descricao: 'Menor preço dentro de uma faixa confiável.' },
+            { label: 'Menor preço', tipo: 'preco', descricao: 'Mais barato dentro da faixa atual.' },
+            { label: 'Alta confiança', tipo: 'confianca', descricao: 'Resultado entre 85% e 100%.' },
+            { label: 'Boa confiança', tipo: 'boaConfianca', descricao: 'Resultado entre 70% e 84%.' },
+            { label: 'Conferir', tipo: 'conferir', descricao: 'Resultado abaixo de 70%.' },
             { label: 'Marca correta', tipo: 'marca', descricao: 'Marca bate com a busca.' },
             { label: 'Medida correta', tipo: 'medida', descricao: 'Medida bate com a planilha.' },
             { label: 'Código encontrado', tipo: 'codigo', descricao: 'Código buscado apareceu.' },
@@ -50,14 +50,14 @@
 
     function tagsResultado(item, resultado, index) {
         const tags = [];
-        const score = Number(resultado.score_produto || 0);
+        const score = scoreResultado(resultado);
         const temPreco = !(resultado.preco === null || resultado.preco === undefined || resultado.preco === '');
         const menorPreco = index === 0 && temPreco;
         const selecionado = resultadoSelecionado(item, resultado);
         const altaConfianca = score >= 0.85;
-        const boaConfianca = score >= 0.80;
-        const compativel = score >= 0.65;
-        const revisar = score > 0 && score < 0.80;
+        const boaConfianca = score >= 0.70;
+        const compativel = score >= 0.70;
+        const revisar = score > 0 && score < 0.70;
 
         if (selecionado) {
             tags.push(tag('Selecionado', 'selecionado'));
@@ -185,10 +185,73 @@
         return formatters.normalizarTexto(texto || '').replace(/[^a-z0-9]/g, '');
     }
 
+    function scoreResultado(resultado) {
+        const scoreMeili = Number(resultado.score_meilisearch ?? 0);
+        const scoreProduto = Number(resultado.score_produto ?? 0);
+
+        return Math.max(scoreMeili || 0, scoreProduto || 0);
+    }
+
+    function faixaConfianca(resultado) {
+        const score = scoreResultado(resultado);
+
+        if (score >= 0.95) return 0;
+        if (score >= 0.85) return 1;
+        if (score >= 0.70) return 2;
+        if (score > 0) return 3;
+
+        return 4;
+    }
+
+    function faixaConfiancaInfo(resultado) {
+        return legendaFaixasConfianca()[faixaConfianca(resultado)];
+    }
+
+    function legendaFaixasConfianca() {
+        return [
+            {
+                titulo: 'Excelente confiança',
+                intervalo: '95-100%',
+                ordenacao: 'menor preço primeiro',
+                classe: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+                borda: 'border-t-4 border-t-emerald-400',
+            },
+            {
+                titulo: 'Alta confiança',
+                intervalo: '85-94%',
+                ordenacao: 'menor preço primeiro',
+                classe: 'bg-teal-50 text-teal-800 border-teal-200',
+                borda: 'border-t-4 border-t-teal-400',
+            },
+            {
+                titulo: 'Boa confiança',
+                intervalo: '70-84%',
+                ordenacao: 'menor preço primeiro',
+                classe: 'bg-sky-50 text-sky-800 border-sky-200',
+                borda: 'border-t-4 border-t-sky-400',
+            },
+            {
+                titulo: 'Conferir',
+                intervalo: '1-69%',
+                ordenacao: 'confiança antes do preço',
+                classe: 'bg-amber-50 text-amber-800 border-amber-200',
+                borda: 'border-t-4 border-t-amber-400',
+            },
+            {
+                titulo: 'Sem confiança',
+                intervalo: '0%',
+                ordenacao: 'confiança antes do preço',
+                classe: 'bg-red-50 text-red-800 border-red-200',
+                borda: 'border-t-4 border-t-red-400',
+            },
+        ];
+    }
+
     function evidenciasResultado(resultado) {
         const atributos = resultado.atributos_extraidos || {};
         const evidencias = [];
 
+        if (resultado.match_meilisearch === true) evidencias.push(`score ${formatters.formatarScore(scoreResultado(resultado))}`);
         if (resultado.codigo) evidencias.push(`cod. ${resultado.codigo}`);
         if (atributos.tipo) evidencias.push(atributos.tipo);
         if (atributos.medida) evidencias.push(atributos.medida);
@@ -206,5 +269,9 @@
         legendaTags,
         tagsResultado,
         evidenciasResultado,
+        scoreResultado,
+        faixaConfianca,
+        faixaConfiancaInfo,
+        legendaFaixasConfianca,
     };
 })();

@@ -49,6 +49,12 @@
             </div>
             <div class="flex flex-col sm:flex-row gap-2">
                 <template x-if="finalizada()">
+                    <a href="{{ route('planilhas.cotacao-fechada', $planilha) }}"
+                       class="inline-flex justify-center text-sm font-bold px-5 py-2.5 rounded-lg border border-amber-500 bg-amber-500 text-white shadow-sm hover:bg-amber-600 hover:border-amber-600 transition-colors">
+                        Cotação fechada
+                    </a>
+                </template>
+                <template x-if="finalizada()">
                     <button type="button"
                             @click="revalidarSelecionados()"
                             :disabled="revalidando || !temSelecionados()"
@@ -76,13 +82,21 @@
             </section>
         </template>
 
+        <section class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 mb-5 text-sm text-amber-900">
+            <p class="font-semibold">Confira antes de fechar a compra</p>
+            <p class="mt-1 text-xs leading-relaxed">
+                Os valores exibidos vêm da última captura/revalidação. Antes de comprar ou confirmar a cotação com o cliente,
+                abra o produto no site da loja e confira preço, estoque, frete, prazo e variações do anúncio.
+            </p>
+        </section>
+
         <section class="bg-white rounded-2xl shadow-sm border border-gray-200 mb-5 overflow-hidden">
             <button type="button"
                     @click="legendaAberta = !legendaAberta"
                     class="w-full px-4 py-3 flex items-center justify-between gap-3 text-left hover:bg-gray-50 transition-colors">
                 <div>
-                    <h2 class="text-sm font-semibold text-gray-900">Legenda das tags</h2>
-                    <p class="text-xs text-gray-500 mt-0.5">Cores indicam decisão, preço e confiança.</p>
+                    <h2 class="text-sm font-semibold text-gray-900">Legenda</h2>
+                    <p class="text-xs text-gray-500 mt-0.5">Faixas explicam a ordem dos resultados e tags destacam evidências.</p>
                 </div>
                 <span class="text-xs font-semibold text-blue-700 whitespace-nowrap"
                       x-text="legendaAberta ? 'Ocultar legenda' : 'Mostrar legenda'"></span>
@@ -91,9 +105,23 @@
             <div x-show="legendaAberta" x-cloak class="border-y border-gray-100 bg-gray-50 px-4 py-3">
                 <div class="mb-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-900">
                     <strong>Confiança</strong> indica o quanto o sistema acredita que o resultado corresponde ao item buscado.
-                    Ela compara descricao, tipo do produto, marca, medidas e codigo apenas quando o usuario pesquisou um codigo.
+                    Dentro das faixas confiáveis, o menor preço vem primeiro. Nas faixas de revisão, a confiança vem antes do preço.
                 </div>
-                <div class="flex flex-wrap gap-x-4 gap-y-2">
+                <div class="mb-4">
+                    <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Faixas de confiança</h3>
+                    <div class="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                        <template x-for="faixa in legendaFaixasConfianca()" :key="faixa.titulo">
+                            <div class="rounded-md border px-3 py-2 text-xs"
+                                 :class="faixa.classe">
+                                <div class="font-bold" x-text="faixa.titulo + ' · ' + faixa.intervalo"></div>
+                                <div class="mt-0.5 opacity-80" x-text="faixa.ordenacao"></div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Tags dos resultados</h3>
+                    <div class="flex flex-wrap gap-x-4 gap-y-2">
                     <template x-for="tag in legendaTags()" :key="tag.label">
                         <div class="inline-flex items-center gap-1.5 min-w-0">
                             <span class="shrink-0 text-[11px] px-2 py-0.5 rounded-full border font-bold"
@@ -102,13 +130,15 @@
                             <span class="text-xs text-gray-500" x-text="tag.descricao"></span>
                         </div>
                     </template>
+                    </div>
                 </div>
             </div>
         </section>
 
         <section class="space-y-3">
             <template x-for="item in itens" :key="item.id">
-                <article class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                <article class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden"
+                         :id="'item-' + item.id">
                     <div class="p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-2">
@@ -224,9 +254,12 @@
                                         <tbody>
                                             <template x-for="(resultado, index) in resultadosOrdenados(item)" :key="resultadoKey(resultado)">
                                                 <tr class="border-b border-gray-100 hover:bg-yellow-50 transition-colors"
-                                                    :class="resultadoSelecionado(item, resultado)
-                                                        ? 'bg-emerald-50 border-l-4 border-emerald-500'
-                                                        : (index === 0 ? 'bg-green-50 border-l-4 border-green-500' : (index % 2 === 0 ? 'bg-white' : 'bg-gray-50'))">
+                                                    :class="[
+                                                        resultadoSelecionado(item, resultado)
+                                                            ? 'bg-emerald-50 border-l-4 border-emerald-500'
+                                                            : (index === 0 ? 'bg-green-50 border-l-4 border-green-500' : (index % 2 === 0 ? 'bg-white' : 'bg-gray-50')),
+                                                        resultado.__inicioFaixa ? resultado.__faixaInfo.borda : ''
+                                                    ]">
                                                     <td class="px-4 py-2">
                                                         <template x-if="resultado.imagem">
                                                             <img :src="resultado.imagem" :alt="resultado.nome"
@@ -239,6 +272,17 @@
                                                     </td>
 
                                                     <td class="px-4 py-2">
+                                                        <template x-if="resultado.__inicioFaixa">
+                                                            <div class="mb-2 inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-semibold"
+                                                                 :class="resultado.__faixaInfo.classe">
+                                                                <span x-text="resultado.__faixaInfo.titulo"></span>
+                                                                <span class="opacity-70" x-text="resultado.__faixaInfo.intervalo"></span>
+                                                                <span class="opacity-70">·</span>
+                                                                <span x-text="resultado.__faixaInfo.ordenacao"></span>
+                                                                <span class="opacity-70">·</span>
+                                                                <span x-text="'menor da faixa ' + formatarPreco(resultado.__menorPrecoFaixa)"></span>
+                                                            </div>
+                                                        </template>
                                                         <div class="flex items-start gap-1.5 flex-wrap">
                                                             <span class="text-gray-900 font-medium leading-snug" x-text="resultado.nome"></span>
                                                         </div>
@@ -246,7 +290,7 @@
                                                             <span class="text-gray-500" x-text="resultado.marca_detectada || 'sem marca'"></span>
                                                             <span class="text-gray-300">·</span>
                                                             <span class="font-bold text-gray-700"
-                                                                  x-text="'Confiança ' + formatarScore(resultado.score_produto)"></span>
+                                                                  x-text="'Confiança ' + formatarScore(scoreResultado(resultado))"></span>
                                                         </div>
                                                         <div class="mt-2 flex flex-wrap gap-1.5">
                                                             <template x-for="tag in tagsResultado(item, resultado, index)" :key="tag.label">

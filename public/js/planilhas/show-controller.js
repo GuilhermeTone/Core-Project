@@ -240,13 +240,52 @@
             },
 
             resultadosOrdenados(item) {
-                return (item.resultados || [])
+                const ordenados = (item.resultados || [])
                     .map((resultado, index) => ({ ...resultado, __index: index }))
                     .sort((a, b) => {
+                        const faixaA = tags.faixaConfianca(a);
+                        const faixaB = tags.faixaConfianca(b);
+                        const scoreA = tags.scoreResultado(a);
+                        const scoreB = tags.scoreResultado(b);
                         const precoA = a.preco === null || a.preco === undefined ? Infinity : Number(a.preco);
                         const precoB = b.preco === null || b.preco === undefined ? Infinity : Number(b.preco);
-                        return precoA - precoB;
+
+                        if (faixaA !== faixaB) {
+                            return faixaA - faixaB;
+                        }
+
+                        if (faixaA >= 3) {
+                            return (scoreB - scoreA) || (precoA - precoB);
+                        }
+
+                        return (precoA - precoB) || (scoreB - scoreA);
                     });
+
+                const menorPrecoPorFaixa = ordenados.reduce((acc, resultado) => {
+                    const faixa = tags.faixaConfianca(resultado);
+                    const preco = resultado.preco === null || resultado.preco === undefined ? Infinity : Number(resultado.preco);
+
+                    if (Number.isFinite(preco) && (!Object.prototype.hasOwnProperty.call(acc, faixa) || preco < acc[faixa])) {
+                        acc[faixa] = preco;
+                    }
+
+                    return acc;
+                }, {});
+
+                return ordenados.map((resultado, index) => {
+                    const faixa = tags.faixaConfianca(resultado);
+                    const faixaAnterior = index > 0 ? tags.faixaConfianca(ordenados[index - 1]) : null;
+
+                    return {
+                        ...resultado,
+                        __faixa: faixa,
+                        __faixaInfo: tags.faixaConfiancaInfo(resultado),
+                        __inicioFaixa: index === 0 || faixa !== faixaAnterior,
+                        __menorPrecoFaixa: Object.prototype.hasOwnProperty.call(menorPrecoPorFaixa, faixa)
+                            ? menorPrecoPorFaixa[faixa]
+                            : null,
+                    };
+                });
             },
 
             resultadoKey(resultado) {
@@ -269,6 +308,10 @@
                 return tags.legendaTags();
             },
 
+            legendaFaixasConfianca() {
+                return tags.legendaFaixasConfianca();
+            },
+
             evidenciasResultado(resultado) {
                 return tags.evidenciasResultado(resultado);
             },
@@ -283,6 +326,10 @@
 
             formatarScore(valor) {
                 return formatters.formatarScore(valor);
+            },
+
+            scoreResultado(resultado) {
+                return tags.scoreResultado(resultado);
             }
         };
     }

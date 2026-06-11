@@ -47,6 +47,7 @@ Route::middleware(['auth', 'subscribed'])->group(function () {
         Route::get('/', [PlanilhaCotacaoController::class, 'index'])->name('index');
         Route::post('/', [PlanilhaCotacaoController::class, 'store'])->name('store');
         Route::get('/{planilha}', [PlanilhaCotacaoController::class, 'show'])->name('show');
+        Route::get('/{planilha}/cotacao-fechada', [PlanilhaCotacaoController::class, 'cotacaoFechada'])->name('cotacao-fechada');
         Route::get('/{planilha}/status', [PlanilhaCotacaoController::class, 'status'])->name('status');
         Route::get('/{planilha}/download', [PlanilhaCotacaoController::class, 'download'])->name('download');
         Route::post('/{planilha}/revalidar', [PlanilhaCotacaoController::class, 'revalidar'])->name('revalidar');

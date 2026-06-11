@@ -40,6 +40,7 @@ class ProductEnrichmentServiceTest extends TestCase
             'Alicate Universal MTX 8 Pol.' => 'MTX',
             'Macaco Hidraulico FERRAR 2T' => 'Ferrar',
             'Prensa Hidraulica MARCON 15T' => 'Marcon',
+            'Chave philips 1/4 x 4 aço carbono NOVE54' => 'Nove54',
         ];
 
         foreach ($casos as $titulo => $marcaEsperada) {
@@ -254,6 +255,26 @@ class ProductEnrichmentServiceTest extends TestCase
         $this->assertNull($produto['marca_detectada']);
         $this->assertSame(0.0, $produto['score_produto']);
         $this->assertTrue($produto['correspondencia_fraca']);
+    }
+
+    public function test_cabo_t_nao_casa_com_produto_apenas_com_cabo_no_nome(): void
+    {
+        $produto = ProductEnrichmentService::enriquecerProduto(
+            ['nome' => 'Formão Reto com Cabo de Madeira 3/4" 19mm Lotus 3286'],
+            'CABO T 18550 3/4 - 18',
+        );
+
+        $this->assertSame(0.0, $produto['score_produto']);
+        $this->assertTrue($produto['correspondencia_fraca']);
+
+        $caboT = ProductEnrichmentService::enriquecerProduto(
+            ['nome' => 'Cabo T CRV 3/4" Gedore 3287'],
+            'CABO T 18550 3/4 - 18',
+        );
+
+        $this->assertSame('cabo t', $caboT['atributos_extraidos']['tipo']);
+        $this->assertSame('3/4"', $caboT['atributos_extraidos']['medida']);
+        $this->assertGreaterThanOrEqual(0.70, $caboT['score_produto']);
     }
 
     public function test_chave_combinada_nao_casa_com_chave_de_impacto(): void

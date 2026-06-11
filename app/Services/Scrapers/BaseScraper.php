@@ -15,16 +15,16 @@ abstract class BaseScraper implements ScraperInterface
     {
         $this->client = new Client([
             'headers' => [
-                'User-Agent'      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept'          => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                 'Accept-Language' => 'pt-BR,pt;q=0.9,en;q=0.8',
                 'Accept-Encoding' => 'gzip, deflate',
-                'Connection'      => 'keep-alive',
+                'Connection' => 'keep-alive',
             ],
-            'timeout'         => 30,
+            'timeout' => 30,
             'connect_timeout' => 10,
-            'http_errors'     => false,
-            'verify'          => false,
+            'http_errors' => false,
+            'verify' => false,
         ]);
     }
 
@@ -38,9 +38,8 @@ abstract class BaseScraper implements ScraperInterface
     {
         $termoLimpo = QueryNormalizer::limpar($termo);
         $resultados = $this->executarBusca($termoLimpo);
-        $resultados = $this->filtrarDisponiveis($resultados);
 
-        return RelevanceFilter::filtrar($resultados, $termoLimpo);
+        return $this->filtrarDisponiveis($resultados);
     }
 
     /**
@@ -62,9 +61,9 @@ abstract class BaseScraper implements ScraperInterface
     protected function buscarVtexIS(string $dominio, string $termo): array
     {
         $query = rawurlencode($termo);
-        $base  = "https://{$dominio}";
-        $url   = "{$base}/api/io/_v/api/intelligent-search/product_search/trade-policy/1"
-               . "?query={$query}&operator=and&fuzzy=auto&from=0&to=9";
+        $base = "https://{$dominio}";
+        $url = "{$base}/api/io/_v/api/intelligent-search/product_search/trade-policy/1"
+               ."?query={$query}&operator=and&fuzzy=auto&from=0&to=9";
 
         $data = json_decode($this->get($url), true);
 
@@ -78,42 +77,42 @@ abstract class BaseScraper implements ScraperInterface
 
         foreach ($products as $product) {
             $nome = $product['productName'] ?? null;
-            $link = $product['link']        ?? null;
+            $link = $product['link'] ?? null;
 
             if (empty($nome) || empty($link)) {
                 continue;
             }
 
             // IS returns relative links — prepend the domain
-            if (!str_starts_with($link, 'http')) {
-                $link = $base . $link;
+            if (! str_starts_with($link, 'http')) {
+                $link = $base.$link;
             }
 
-            $preco  = null;
+            $preco = null;
             $imagem = null;
-            $item   = $product['items'][0] ?? null;
+            $item = $product['items'][0] ?? null;
 
             $disponivel = true;
 
             if ($item) {
                 $offer = $item['sellers'][0]['commertialOffer'] ?? [];
-                $preco  = $this->precoPrincipalVtex($offer);
+                $preco = $this->precoPrincipalVtex($offer);
                 $imagem = $item['images'][0]['imageUrl'] ?? null;
                 $disponivel = $this->disponibilidadePorCampos($offer) ?? true;
             }
 
             $descricao = null;
-            if (!empty($product['description'])) {
+            if (! empty($product['description'])) {
                 $descricao = mb_substr(strip_tags($product['description']), 0, 300);
             }
 
             $resultados[] = [
-                'nome'      => $nome,
+                'nome' => $nome,
                 'descricao' => $descricao,
-                'preco'     => $preco,
-                'url'       => $link,
-                'imagem'    => $imagem,
-                'codigo'    => $product['productReference'] ?? null,
+                'preco' => $preco,
+                'url' => $link,
+                'imagem' => $imagem,
+                'codigo' => $product['productReference'] ?? null,
                 'disponivel' => $disponivel,
             ];
         }
@@ -261,14 +260,14 @@ abstract class BaseScraper implements ScraperInterface
         }
 
         if (str_starts_with($href, '//')) {
-            return 'https:' . $href;
+            return 'https:'.$href;
         }
 
         if (str_starts_with($href, 'http')) {
             return $href;
         }
 
-        return rtrim($base, '/') . '/' . ltrim($href, '/');
+        return rtrim($base, '/').'/'.ltrim($href, '/');
     }
 
     protected function textoPrimeiro(Crawler $node, array $seletores): ?string
@@ -293,7 +292,7 @@ abstract class BaseScraper implements ScraperInterface
             try {
                 $valor = $node->filter($seletor)->first()->attr($atributo);
 
-                if (!empty($valor)) {
+                if (! empty($valor)) {
                     return html_entity_decode($valor, ENT_QUOTES | ENT_HTML5, 'UTF-8');
                 }
             } catch (\Exception $e) {
@@ -343,13 +342,13 @@ abstract class BaseScraper implements ScraperInterface
                 $disponivel = $this->disponibilidadePorNode($node);
 
                 $resultados[] = [
-                    'nome'      => $nome,
+                    'nome' => $nome,
                     'descricao' => null,
-                    'preco'     => $preco,
-                    'url'       => $this->urlAbsoluta($base, $href),
-                    'imagem'    => $this->atributoPrimeiro($node, ['.imagem-produto img', 'img'], 'src')
+                    'preco' => $preco,
+                    'url' => $this->urlAbsoluta($base, $href),
+                    'imagem' => $this->atributoPrimeiro($node, ['.imagem-produto img', 'img'], 'src')
                         ?? $this->atributoPrimeiro($node, ['.imagem-produto img', 'img'], 'data-src'),
-                    'codigo'    => $codigo,
+                    'codigo' => $codigo,
                     'disponivel' => $disponivel,
                 ];
             });
@@ -388,11 +387,13 @@ abstract class BaseScraper implements ScraperInterface
             if ($emString) {
                 if ($escape) {
                     $escape = false;
+
                     continue;
                 }
 
                 if ($char === '\\') {
                     $escape = true;
+
                     continue;
                 }
 
@@ -406,6 +407,7 @@ abstract class BaseScraper implements ScraperInterface
             if ($char === '"' || $char === "'") {
                 $emString = true;
                 $aspas = $char;
+
                 continue;
             }
 
@@ -433,12 +435,15 @@ abstract class BaseScraper implements ScraperInterface
     {
         try {
             $response = $this->client->get($url);
+
             return (string) $response->getBody();
         } catch (GuzzleException $e) {
-            Log::warning("[{$this->identificador()}] GET falhou para {$url}: " . $e->getMessage());
+            Log::warning("[{$this->identificador()}] GET falhou para {$url}: ".$e->getMessage());
+
             return '';
         } catch (\Exception $e) {
-            Log::warning("[{$this->identificador()}] Erro inesperado para {$url}: " . $e->getMessage());
+            Log::warning("[{$this->identificador()}] Erro inesperado para {$url}: ".$e->getMessage());
+
             return '';
         }
     }

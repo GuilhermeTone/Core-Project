@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\CrawlerExecucao;
 use App\Models\PlanilhaCotacaoItem;
 use App\Services\CrawlerService;
+use App\Support\Utf8Sanitizer;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -18,6 +19,7 @@ class ProcessarPlanilhaCotacaoItemLojaJob implements ShouldQueue
     use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 90;
+
     public int $tries = 1;
 
     public function __construct(
@@ -56,6 +58,8 @@ class ProcessarPlanilhaCotacaoItemLojaJob implements ShouldQueue
                     'imagem' => $resultado['imagem'] ?? null,
                     'marca_detectada' => $resultado['marca_detectada'] ?? null,
                     'score_produto' => $resultado['score_produto'] ?? null,
+                    'score_meilisearch' => $resultado['score_meilisearch'] ?? null,
+                    'match_meilisearch' => $resultado['match_meilisearch'] ?? null,
                     'atributos_extraidos' => $resultado['atributos_extraidos'] ?? null,
                     'codigo' => $resultado['codigo'] ?? null,
                     'disponivel' => $resultado['disponivel'] ?? true,
@@ -108,6 +112,7 @@ class ProcessarPlanilhaCotacaoItemLojaJob implements ShouldQueue
 
             $resultados = array_merge($item->resultados ?? [], $resultadosResumo);
             $resultados = $this->resultadosUnicosOrdenados($resultados);
+            $resultados = Utf8Sanitizer::sanitize($resultados);
             $totalLojas = max((int) $item->lojas_total, 1);
             $lojasProcessadas = min(($item->lojas_processadas ?? 0) + 1, $totalLojas);
             $erros = trim(implode("\n", array_filter([$item->erro_mensagem, $erro])));
@@ -184,8 +189,41 @@ class ProcessarPlanilhaCotacaoItemLojaJob implements ShouldQueue
             $unicos[] = $resultado;
         }
 
-        usort($unicos, fn (array $a, array $b): int => ((float) ($a['preco'] ?? PHP_FLOAT_MAX)) <=> ((float) ($b['preco'] ?? PHP_FLOAT_MAX)));
+        usort($unicos, function (array $a, array $b): int {
+            $scoreA = $this->scoreResultado($a);
+            $scoreB = $this->scoreResultado($b);
+            $precoA = isset($a['preco']) && $a['preco'] !== null ? (float) $a['preco'] : PHP_FLOAT_MAX;
+            $precoB = isset($b['preco']) && $b['preco'] !== null ? (float) $b['preco'] : PHP_FLOAT_MAX;
+            $faixaA = $this->faixaConfianca($scoreA);
+            $faixaB = $this->faixaConfianca($scoreB);
+
+            if ($faixaA !== $faixaB) {
+                return $faixaA <=> $faixaB;
+            }
+
+            if ($faixaA >= 3) {
+                return ($scoreB <=> $scoreA) ?: ($precoA <=> $precoB);
+            }
+
+            return ($precoA <=> $precoB) ?: ($scoreB <=> $scoreA);
+        });
 
         return $unicos;
+    }
+
+    private function scoreResultado(array $resultado): float
+    {
+        return max((float) ($resultado['score_meilisearch'] ?? 0), (float) ($resultado['score_produto'] ?? 0));
+    }
+
+    private function faixaConfianca(float $score): int
+    {
+        return match (true) {
+            $score >= 0.95 => 0,
+            $score >= 0.85 => 1,
+            $score >= 0.70 => 2,
+            $score > 0.0 => 3,
+            default => 4,
+        };
     }
 }

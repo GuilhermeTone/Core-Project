@@ -39,6 +39,7 @@ class ProductEnrichmentService
         'Belzer',
         'Irwin',
         'Starrett',
+        'Nove54',
     ];
 
     /** @var array<string, array{categoria: string, tipo: string}> */
@@ -363,6 +364,14 @@ class ProductEnrichmentService
             $score = max($score, $scoreCodigo);
         }
 
+        if (($atributosBusca['tipo'] ?? null) !== null && ($atributosBusca['tipo'] ?? null) === ($atributos['tipo'] ?? null)) {
+            $score = max($score, 0.55);
+
+            if (self::medidasSobrepoem($atributosBusca['medida'], $atributos['medida'] ?? null)) {
+                $score = max($score, 0.70);
+            }
+        }
+
         return round(min(1.0, $score), 2);
     }
 
@@ -559,6 +568,26 @@ class ProductEnrichmentService
         return $matches / count($tokensValor);
     }
 
+    private static function medidasSobrepoem(?string $medidaBusca, ?string $medidaProduto): bool
+    {
+        if ($medidaBusca === null || $medidaProduto === null) {
+            return false;
+        }
+
+        $tokensBusca = array_filter(self::tokenizar($medidaBusca), fn (string $token): bool => preg_match('/\d/', $token) === 1);
+        $tokensProduto = array_filter(self::tokenizar($medidaProduto), fn (string $token): bool => preg_match('/\d/', $token) === 1);
+
+        foreach ($tokensBusca as $tokenBusca) {
+            foreach ($tokensProduto as $tokenProduto) {
+                if (self::tokensEquivalentes($tokenBusca, $tokenProduto)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     private static function tokensEquivalentes(string $a, string $b): bool
     {
         if ($a === $b) {
@@ -655,6 +684,10 @@ class ProductEnrichmentService
 
     private static function tiposIncompativeis(?string $tipoBusca, ?string $tipoProduto): bool
     {
+        if ($tipoBusca === 'cabo t' && $tipoProduto !== 'cabo t') {
+            return true;
+        }
+
         if ($tipoBusca === null || $tipoProduto === null) {
             return false;
         }
@@ -710,6 +743,7 @@ class ProductEnrichmentService
             '/\b\d+\s+\d+\/\d+\s*(?:(?:pol|polegadas?)\b|["”])?/i',
             '/\b\d+[,.]\d+\/\d+\s*(?:(?:pol|polegadas?)\b|["”])?/i',
             '/\b\d+\/\d+\s*(?:(?:pol|polegadas?)\b|["”])?\s*x\s*\d+(?:[,.]\d+)?\s*(?:(?:pol|polegadas?)\b|["”])?/i',
+            '/\b\d+\/\d+\s*(?:(?:pol|polegadas?)\b|["”])?/i',
             '/\b\d+(?:[,.]\d+)?\s*(?:(?:mm|cm|m|kg|g|pol|polegadas?)\b|["”])/i',
         ];
 

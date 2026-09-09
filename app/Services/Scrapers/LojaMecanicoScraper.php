@@ -92,6 +92,7 @@ class LojaMecanicoScraper extends BaseScraper
                 'url'       => $url,
                 'imagem'    => $imagem,
                 'codigo'    => $hit['model'] ?? null,
+                'disponivel' => $this->disponibilidadePorCampos($hit),
             ];
         }
 

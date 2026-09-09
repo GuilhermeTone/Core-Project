@@ -6,7 +6,7 @@ use App\Services\Scrapers\QueryNormalizer;
 
 class SerperRelevanceService
 {
-    private const SCORE_MINIMO = 0.70;
+    private const SCORE_MINIMO = 0.65;
 
     private const STOPWORDS_MARCA = [
         'tinta', 'torneira', 'registro', 'lampada', 'filtro', 'oleo', 'motor',

@@ -86,6 +86,7 @@ class KennedyScraper extends BaseScraper
                 'url'       => $url,
                 'imagem'    => $imagem,
                 'codigo'    => $codigo,
+                'disponivel' => $this->disponibilidadePorCampos($product) ?? $this->disponibilidadePorTexto(json_encode($product, JSON_UNESCAPED_UNICODE)),
             ];
 
             if (count($resultados) >= 10) {

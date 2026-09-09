@@ -70,6 +70,7 @@ class MercadoLivreScraper extends BaseScraper
                     ? str_replace('I.jpg', 'O.jpg', $item['thumbnail'])
                     : null,
                 'codigo'    => $codigo,
+                'disponivel' => $this->disponibilidadePorCampos($item),
             ];
         }
 

@@ -45,6 +45,7 @@ class CasaFrentistaScraper extends BaseScraper
                 'url'       => $this->urlAbsoluta(self::BASE_URL, $item['link']),
                 'imagem'    => $item['midia_url'] ?? null,
                 'codigo'    => $item['codigo'] ?? null,
+                'disponivel' => $this->disponibilidadePorCampos($item) ?? $this->disponibilidadePorTexto(json_encode($item, JSON_UNESCAPED_UNICODE)),
             ];
         }
 

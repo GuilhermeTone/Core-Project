@@ -37,6 +37,30 @@ return [
         'api_key' => env('SERPER_API_KEY'),
     ],
 
+    'openai' => [
+        'enabled' => env('OPENAI_ENABLED', false),
+        'normalize_search_enabled' => env('OPENAI_NORMALIZE_SEARCH_ENABLED', true),
+        'api_key' => env('OPENAI_API_KEY'),
+        'model' => env('OPENAI_MODEL', 'gpt-5.4-nano'),
+        'fallback_model' => env('OPENAI_FALLBACK_MODEL', 'gpt-4.1-nano'),
+        'timeout' => (int) env('OPENAI_TIMEOUT', 12),
+        'max_output_tokens' => (int) env('OPENAI_MAX_OUTPUT_TOKENS', 220),
+        'cache_ttl' => (int) env('OPENAI_CACHE_TTL', 86400),
+    ],
+
+    'meilisearch' => [
+        'enabled' => env('MEILISEARCH_ENABLED', false),
+        'host' => env('MEILISEARCH_HOST', 'http://meilisearch:7700'),
+        'key' => env('MEILISEARCH_KEY'),
+        'temp_index_prefix' => env('MEILISEARCH_TEMP_INDEX_PREFIX', 'crawler_candidates'),
+        'timeout' => (int) env('MEILISEARCH_TIMEOUT', 5),
+        'task_wait_attempts' => (int) env('MEILISEARCH_TASK_WAIT_ATTEMPTS', 20),
+        'task_wait_usleep' => (int) env('MEILISEARCH_TASK_WAIT_USLEEP', 100000),
+        'matching_strategy' => env('MEILISEARCH_MATCHING_STRATEGY', 'last'),
+        'max_results' => (int) env('MEILISEARCH_MAX_RESULTS', 30),
+        'min_ranking_score' => (float) env('MEILISEARCH_MIN_RANKING_SCORE', 0.0),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

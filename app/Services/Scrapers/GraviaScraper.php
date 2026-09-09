@@ -45,6 +45,7 @@ class GraviaScraper extends BaseScraper
                     'url'       => $this->urlAbsoluta(self::BASE_URL, $href),
                     'imagem'    => $this->atributoPrimeiro($node, ['.product-image img', 'img'], 'src'),
                     'codigo'    => $node->filter('.ct')->count() ? $node->filter('.ct')->first()->attr('data-sku') : null,
+                    'disponivel' => $this->disponibilidadePorNode($node),
                 ];
             });
         } catch (\Exception $e) {

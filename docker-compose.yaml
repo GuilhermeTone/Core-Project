@@ -9,8 +9,13 @@ services:
     container_name: app
     volumes:
       - ./:/var/www
+    environment:
+      MEILISEARCH_ENABLED: ${MEILISEARCH_ENABLED:-true}
+      MEILISEARCH_HOST: ${MEILISEARCH_HOST:-http://meilisearch:7700}
+      MEILISEARCH_KEY: ${MEILISEARCH_KEY:-}
     depends_on:
       - redis
+      - meilisearch
     networks:
       - laravel
   horizon:
@@ -23,9 +28,14 @@ services:
     command: php artisan horizon
     volumes:
       - ./:/var/www
+    environment:
+      MEILISEARCH_ENABLED: ${MEILISEARCH_ENABLED:-true}
+      MEILISEARCH_HOST: ${MEILISEARCH_HOST:-http://meilisearch:7700}
+      MEILISEARCH_KEY: ${MEILISEARCH_KEY:-}
     depends_on:
       - redis
       - mysql_db
+      - meilisearch
     networks:
       - laravel
 
@@ -61,9 +71,22 @@ services:
     ports:
     - "6379:6379"
 
+  meilisearch:
+    image: getmeili/meilisearch:latest
+    environment:
+      MEILI_ENV: development
+      MEILI_NO_ANALYTICS: "true"
+    ports:
+      - "7700:7700"
+    volumes:
+      - meilisearch_data:/meili_data
+    networks:
+      - laravel
+
 networks:
   laravel:
     driver: bridge
 
 volumes:
   mysql_data:
+  meilisearch_data:

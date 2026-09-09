@@ -1,11 +1,18 @@
 <header class="bg-white shadow-sm border-b border-gray-200">
-    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
         <div class="flex items-center gap-3 min-w-0">
             {{ $slot }}
         </div>
         <div class="flex items-center gap-3 shrink-0">
             {{ $actions ?? '' }}
             <div class="flex items-center gap-2 border-l border-gray-200 pl-3">
+                <a href="{{ route('dashboard.index') }}"
+                   class="hidden sm:flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-colors
+                          {{ request()->routeIs('dashboard.*')
+                              ? 'text-blue-700 border-blue-200 bg-blue-50'
+                              : 'text-gray-600 border-gray-200 bg-white hover:bg-gray-50' }}">
+                    Dashboard
+                </a>
                 <a href="{{ route('planilhas.index') }}"
                    class="hidden sm:flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-colors
                           {{ request()->routeIs('planilhas.*')
@@ -20,6 +27,15 @@
                               : 'text-gray-600 border-gray-200 bg-white hover:bg-gray-50' }}">
                     Buscas específicas
                 </a>
+                @if (auth()->user()->isAdmin())
+                    <a href="{{ route('crawlers.saude') }}"
+                       class="hidden sm:flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-colors
+                              {{ request()->routeIs('crawlers.*')
+                                  ? 'text-blue-700 border-blue-200 bg-blue-50'
+                                  : 'text-gray-600 border-gray-200 bg-white hover:bg-gray-50' }}">
+                        Saúde das lojas
+                    </a>
+                @endif
                 <a href="{{ route('assinatura.index') }}"
                    title="{{ auth()->user()->subscribed('default') ? 'Assinatura ativa' : 'Sem assinatura ativa' }}"
                    class="hidden sm:flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-colors

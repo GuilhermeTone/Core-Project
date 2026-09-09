@@ -39,8 +39,13 @@ class ProcessarPlanilhaCotacaoJob implements ShouldQueue
                 'lojas_total' => $totalLojas,
                 'lojas_processadas' => 0,
                 'marca_cotada' => null,
+                'preco_loja' => null,
+                'preco_revalidado' => null,
                 'valor_unitario' => null,
                 'resultado_escolhido' => null,
+                'revalidacao_status' => null,
+                'revalidado_em' => null,
+                'revalidacao_mensagem' => null,
                 'resultados' => [],
                 'erro_mensagem' => null,
             ]);

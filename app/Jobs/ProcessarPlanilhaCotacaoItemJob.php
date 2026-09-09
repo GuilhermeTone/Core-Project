@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\PlanilhaCotacaoItem;
 use App\Services\CrawlerService;
+use App\Support\Utf8Sanitizer;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -16,6 +17,7 @@ class ProcessarPlanilhaCotacaoItemJob implements ShouldQueue
     use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 180;
+
     public int $tries = 1;
 
     public function __construct(public readonly int $itemId) {}
@@ -30,13 +32,30 @@ class ProcessarPlanilhaCotacaoItemJob implements ShouldQueue
         $item->update(['status' => 'processando']);
 
         try {
-            $resultados = $crawler->buscar($item->descricao);
+            $resultados = $crawler->buscar(trim((string) ($item->termo_busca ?: $item->descricao)));
             $resultados = array_values(array_filter(
                 $resultados,
                 fn (array $resultado): bool => (float) ($resultado['preco'] ?? 0) > 0,
             ));
 
-            usort($resultados, fn (array $a, array $b): int => ((float) $a['preco']) <=> ((float) $b['preco']));
+            usort($resultados, function (array $a, array $b): int {
+                $scoreA = $this->scoreResultado($a);
+                $scoreB = $this->scoreResultado($b);
+                $faixaA = $this->faixaConfianca($scoreA);
+                $faixaB = $this->faixaConfianca($scoreB);
+
+                if ($faixaA !== $faixaB) {
+                    return $faixaA <=> $faixaB;
+                }
+
+                if ($faixaA >= 3) {
+                    return ($scoreB <=> $scoreA)
+                        ?: (((float) $a['preco']) <=> ((float) $b['preco']));
+                }
+
+                return (((float) $a['preco']) <=> ((float) $b['preco']))
+                    ?: ($scoreB <=> $scoreA);
+            });
 
             $resultadosResumo = array_map(
                 fn (array $resultado): array => [
@@ -48,6 +67,12 @@ class ProcessarPlanilhaCotacaoItemJob implements ShouldQueue
                     'imagem' => $resultado['imagem'] ?? null,
                     'marca_detectada' => $resultado['marca_detectada'] ?? null,
                     'score_produto' => $resultado['score_produto'] ?? null,
+                    'score_meilisearch' => $resultado['score_meilisearch'] ?? null,
+                    'match_meilisearch' => $resultado['match_meilisearch'] ?? null,
+                    'atributos_extraidos' => $resultado['atributos_extraidos'] ?? null,
+                    'codigo' => $resultado['codigo'] ?? null,
+                    'disponivel' => $resultado['disponivel'] ?? true,
+                    'capturado_em' => now()->toIso8601String(),
                 ],
                 array_slice($resultados, 0, 20),
             );
@@ -55,9 +80,14 @@ class ProcessarPlanilhaCotacaoItemJob implements ShouldQueue
             $item->update([
                 'status' => ! empty($resultadosResumo) ? 'concluido' : 'sem_resultado',
                 'marca_cotada' => null,
+                'preco_loja' => null,
+                'preco_revalidado' => null,
                 'valor_unitario' => null,
                 'resultado_escolhido' => null,
-                'resultados' => $resultadosResumo,
+                'revalidacao_status' => null,
+                'revalidado_em' => null,
+                'revalidacao_mensagem' => null,
+                'resultados' => Utf8Sanitizer::sanitize($resultadosResumo),
                 'erro_mensagem' => null,
             ]);
         } catch (\Throwable $e) {
@@ -68,5 +98,21 @@ class ProcessarPlanilhaCotacaoItemJob implements ShouldQueue
         } finally {
             $item->planilha()->increment('itens_processados');
         }
+    }
+
+    private function scoreResultado(array $resultado): float
+    {
+        return max((float) ($resultado['score_meilisearch'] ?? 0), (float) ($resultado['score_produto'] ?? 0));
+    }
+
+    private function faixaConfianca(float $score): int
+    {
+        return match (true) {
+            $score >= 0.95 => 0,
+            $score >= 0.85 => 1,
+            $score >= 0.70 => 2,
+            $score > 0.0 => 3,
+            default => 4,
+        };
     }
 }

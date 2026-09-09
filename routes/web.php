@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AssinaturaController;
+use App\Http\Controllers\CrawlerSaudeController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FerramentaController;
 use App\Http\Controllers\PlanilhaCotacaoController;
 use App\Http\Controllers\ProfileController;
@@ -31,6 +33,9 @@ Route::middleware(['auth', 'subscribed'])->group(function () {
     Route::redirect('/orcamentos', '/planilhas');
     Route::redirect('/orcamentos/{any}', '/planilhas')->where('any', '.*');
 
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
+    Route::get('/crawlers/saude', [CrawlerSaudeController::class, 'index'])->name('crawlers.saude');
+
     Route::prefix('buscas-especificas')->name('ferramentas.')->group(function () {
         Route::get('/', [FerramentaController::class, 'index'])->name('index');
         Route::post('/buscar', [FerramentaController::class, 'buscar'])->name('buscar');
@@ -42,9 +47,12 @@ Route::middleware(['auth', 'subscribed'])->group(function () {
         Route::get('/', [PlanilhaCotacaoController::class, 'index'])->name('index');
         Route::post('/', [PlanilhaCotacaoController::class, 'store'])->name('store');
         Route::get('/{planilha}', [PlanilhaCotacaoController::class, 'show'])->name('show');
+        Route::get('/{planilha}/cotacao-fechada', [PlanilhaCotacaoController::class, 'cotacaoFechada'])->name('cotacao-fechada');
         Route::get('/{planilha}/status', [PlanilhaCotacaoController::class, 'status'])->name('status');
         Route::get('/{planilha}/download', [PlanilhaCotacaoController::class, 'download'])->name('download');
+        Route::post('/{planilha}/revalidar', [PlanilhaCotacaoController::class, 'revalidar'])->name('revalidar');
         Route::post('/{planilha}/itens/{item}/selecionar', [PlanilhaCotacaoController::class, 'selecionarResultado'])->name('itens.selecionar');
+        Route::post('/{planilha}/itens/{item}/refazer-busca', [PlanilhaCotacaoController::class, 'refazerBuscaItem'])->name('itens.refazer-busca');
         Route::patch('/{planilha}/itens/{item}/margem', [PlanilhaCotacaoController::class, 'atualizarMargem'])->name('itens.margem');
         Route::delete('/{planilha}/itens/{item}/selecionar', [PlanilhaCotacaoController::class, 'limparResultado'])->name('itens.limpar');
         Route::delete('/{planilha}', [PlanilhaCotacaoController::class, 'destroy'])->name('destroy');

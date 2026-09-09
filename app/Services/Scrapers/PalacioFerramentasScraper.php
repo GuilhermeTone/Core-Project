@@ -47,6 +47,7 @@ class PalacioFerramentasScraper extends BaseScraper
                     'url'       => $this->urlAbsoluta(self::BASE_URL, $href),
                     'imagem'    => $this->atributoPrimeiro($node, ['img.product-image-photo', 'img'], 'src'),
                     'codigo'    => $this->atributoPrimeiro($node, ['form[data-product-sku]'], 'data-product-sku'),
+                    'disponivel' => $this->disponibilidadePorNode($node),
                 ];
             });
         } catch (\Exception $e) {

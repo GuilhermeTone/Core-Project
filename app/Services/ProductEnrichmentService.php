@@ -6,7 +6,7 @@ use App\Services\Scrapers\QueryNormalizer;
 
 class ProductEnrichmentService
 {
-    private const LIMITE_CORRESPONDENCIA_FRACA = 0.50;
+    private const LIMITE_CORRESPONDENCIA_FRACA = 0.65;
 
     /** @var string[] */
     private const MARCAS = [
@@ -39,6 +39,7 @@ class ProductEnrichmentService
         'Belzer',
         'Irwin',
         'Starrett',
+        'Nove54',
     ];
 
     /** @var array<string, array{categoria: string, tipo: string}> */
@@ -65,14 +66,25 @@ class ProductEnrichmentService
         'jogo de chave allen' => ['categoria' => 'ferramenta manual', 'tipo' => 'jogo de chaves allen'],
         'jogo de chaves' => ['categoria' => 'ferramenta manual', 'tipo' => 'jogo de chaves'],
         'chave canhao' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave canhao'],
+        'chave phillips' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave philips'],
         'chave philips' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave philips'],
         'chave combinada' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave combinada'],
         'chave de impacto' => ['categoria' => 'ferramenta eletrica', 'tipo' => 'chave de impacto'],
+        'chave para tubos' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave grifo'],
+        'chave para tubo' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave grifo'],
+        'chave tubo' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave grifo'],
+        'chave stilson' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave grifo'],
         'chave de fenda' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave fenda'],
         'chave grifo' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave grifo'],
         'chave griffo' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave grifo'],
+        'chave americana' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave grifo'],
+        'stilson' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave grifo'],
+        'grifo' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave grifo'],
         'chave fenda' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave fenda'],
         'chave inglesa' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave inglesa'],
+        'chave estrela' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave estrela'],
+        'chave fixa' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave fixa'],
+        'chave biela' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave biela'],
         'chave' => ['categoria' => 'ferramenta manual', 'tipo' => 'chave'],
         'cabo t' => ['categoria' => 'ferramenta manual', 'tipo' => 'cabo t'],
         'martelo unha' => ['categoria' => 'ferramenta manual', 'tipo' => 'martelo unha'],
@@ -235,6 +247,16 @@ class ProductEnrichmentService
     }
 
     /**
+     * Retorna apenas códigos/referências que vieram da busca do usuário.
+     *
+     * @return string[]
+     */
+    public static function extrairCodigosDaBusca(string $termo): array
+    {
+        return self::extrairCodigos($termo);
+    }
+
+    /**
      * @return array{
      *     categoria: string|null,
      *     tipo: string|null,
@@ -340,6 +362,14 @@ class ProductEnrichmentService
 
         if ($scoreCodigo > 0.0) {
             $score = max($score, $scoreCodigo);
+        }
+
+        if (($atributosBusca['tipo'] ?? null) !== null && ($atributosBusca['tipo'] ?? null) === ($atributos['tipo'] ?? null)) {
+            $score = max($score, 0.55);
+
+            if (self::medidasSobrepoem($atributosBusca['medida'], $atributos['medida'] ?? null)) {
+                $score = max($score, 0.70);
+            }
         }
 
         return round(min(1.0, $score), 2);
@@ -538,6 +568,26 @@ class ProductEnrichmentService
         return $matches / count($tokensValor);
     }
 
+    private static function medidasSobrepoem(?string $medidaBusca, ?string $medidaProduto): bool
+    {
+        if ($medidaBusca === null || $medidaProduto === null) {
+            return false;
+        }
+
+        $tokensBusca = array_filter(self::tokenizar($medidaBusca), fn (string $token): bool => preg_match('/\d/', $token) === 1);
+        $tokensProduto = array_filter(self::tokenizar($medidaProduto), fn (string $token): bool => preg_match('/\d/', $token) === 1);
+
+        foreach ($tokensBusca as $tokenBusca) {
+            foreach ($tokensProduto as $tokenProduto) {
+                if (self::tokensEquivalentes($tokenBusca, $tokenProduto)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     private static function tokensEquivalentes(string $a, string $b): bool
     {
         if ($a === $b) {
@@ -634,6 +684,10 @@ class ProductEnrichmentService
 
     private static function tiposIncompativeis(?string $tipoBusca, ?string $tipoProduto): bool
     {
+        if ($tipoBusca === 'cabo t' && $tipoProduto !== 'cabo t') {
+            return true;
+        }
+
         if ($tipoBusca === null || $tipoProduto === null) {
             return false;
         }
@@ -644,6 +698,10 @@ class ProductEnrichmentService
 
         $buscaEhChave = str_starts_with($tipoBusca, 'chave ');
         $produtoEhChave = str_starts_with($tipoProduto, 'chave ');
+
+        if ($buscaEhChave && $tipoProduto === 'chave') {
+            return true;
+        }
 
         return $buscaEhChave && $produtoEhChave;
     }
@@ -685,6 +743,7 @@ class ProductEnrichmentService
             '/\b\d+\s+\d+\/\d+\s*(?:(?:pol|polegadas?)\b|["”])?/i',
             '/\b\d+[,.]\d+\/\d+\s*(?:(?:pol|polegadas?)\b|["”])?/i',
             '/\b\d+\/\d+\s*(?:(?:pol|polegadas?)\b|["”])?\s*x\s*\d+(?:[,.]\d+)?\s*(?:(?:pol|polegadas?)\b|["”])?/i',
+            '/\b\d+\/\d+\s*(?:(?:pol|polegadas?)\b|["”])?/i',
             '/\b\d+(?:[,.]\d+)?\s*(?:(?:mm|cm|m|kg|g|pol|polegadas?)\b|["”])/i',
         ];
 

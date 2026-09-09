@@ -78,6 +78,12 @@
                            class="text-sm font-semibold px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors">
                             Abrir
                         </a>
+                        @if ($planilha->status === 'concluido')
+                            <a href="{{ route('planilhas.cotacao-fechada', $planilha) }}"
+                               class="text-sm font-bold px-4 py-2 rounded-lg border border-amber-500 bg-amber-500 text-white shadow-sm hover:bg-amber-600 hover:border-amber-600 transition-colors">
+                                Fechada
+                            </a>
+                        @endif
                         @if ($planilha->arquivo_processado)
                             <a href="{{ route('planilhas.download', $planilha) }}"
                                class="text-sm font-semibold px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors">

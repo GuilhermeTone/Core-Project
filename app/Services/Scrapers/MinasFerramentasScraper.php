@@ -49,6 +49,7 @@ class MinasFerramentasScraper extends BaseScraper
                     'imagem'    => $this->atributoPrimeiro($node, ['img'], 'data-src')
                         ?? $this->atributoPrimeiro($node, ['img'], 'src'),
                     'codigo'    => null,
+                    'disponivel' => $this->disponibilidadePorNode($node),
                 ];
             });
         } catch (\Exception $e) {

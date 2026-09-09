@@ -55,6 +55,7 @@ class TramontinaScraper extends BaseScraper
                     'imagem'    => $this->atributoPrimeiro($node, ['img'], 'src')
                         ?? $this->atributoPrimeiro($node, ['img'], 'data-src'),
                     'codigo'    => $item['item_id'] ?? null,
+                    'disponivel' => $this->disponibilidadePorCampos($item ?? []) ?? $this->disponibilidadePorNode($node),
                 ];
             });
         } catch (\Exception $e) {

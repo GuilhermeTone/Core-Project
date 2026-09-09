@@ -58,6 +58,7 @@ class AgreliMaquinasScraper extends BaseScraper
                     'imagem'    => $this->atributoPrimeiro($node, ['img'], 'data-src')
                         ?? $this->atributoPrimeiro($node, ['img'], 'src'),
                     'codigo'    => $node->attr('product-ref'),
+                    'disponivel' => $this->disponibilidadePorNode($node),
                 ];
             });
         } catch (\Exception $e) {
